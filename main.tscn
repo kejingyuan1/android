@@ -1,0 +1,144 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/world_map/global_game.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/world_map/world_renderer.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/game_manager.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/ui/top_bar.gd" id="4"]
+[ext_resource type="Script" path="res://scripts/ui/rci_bar.gd" id="5"]
+[ext_resource type="Script" path="res://scripts/ui/bottom_bar.gd" id="6"]
+[ext_resource type="Script" path="res://scripts/ui/info_card.gd" id="7"]
+[ext_resource type="Script" path="res://scripts/ui/sub_menu.gd" id="8"]
+[ext_resource type="Script" path="res://scripts/sprite_manager.gd" id="9"]
+[ext_resource type="Script" path="res://scripts/ui/civ_select_ui.gd" id="10"]
+[ext_resource type="Script" path="res://scripts/camera_controller.gd" id="11"]
+[ext_resource type="Script" path="res://scripts/grid_renderer.gd" id="12"]
+[ext_resource type="Script" path="res://scripts/world_map/world_camera.gd" id="13"]
+[ext_resource type="Script" path="res://scripts/ui/loading_screen.gd" id="14"]
+
+[node name="Main" type="Node2D"]
+
+[node name="WorldMapLayer" type="Node2D" parent="."]
+visible = false
+
+[node name="WorldRenderer" type="Node2D" parent="WorldMapLayer"]
+z_index = 0
+script = ExtResource("2")
+
+[node name="WorldCamera" type="Camera2D" parent="WorldMapLayer"]
+position = Vector2(50000, 50000)
+zoom = Vector2(0.001, 0.001)
+limit_left = 0
+limit_top = 0
+limit_right = 100000
+limit_bottom = 100000
+drag_margin_h_enabled = false
+drag_margin_v_enabled = false
+script = ExtResource("13")
+
+[node name="CityViewLayer" type="Node2D" parent="."]
+visible = false
+
+[node name="GameWorld" type="Node2D" parent="CityViewLayer"]
+
+[node name="GridRenderer" type="Node2D" parent="CityViewLayer/GameWorld"]
+z_index = 0
+script = ExtResource("12")
+
+[node name="RoadMap" type="TileMapLayer" parent="CityViewLayer/GameWorld"]
+z_index = 1
+
+[node name="ZoneMap" type="TileMapLayer" parent="CityViewLayer/GameWorld"]
+z_index = 2
+
+[node name="HighlightMap" type="TileMapLayer" parent="CityViewLayer/GameWorld"]
+z_index = 3
+
+[node name="BuildingContainer" type="Node2D" parent="CityViewLayer/GameWorld"]
+z_index = 10
+
+[node name="SelectionRect" type="ColorRect" parent="CityViewLayer/GameWorld"]
+color = Color(1, 1, 0, 0.35)
+size = Vector2(64, 64)
+visible = false
+z_index = 20
+
+[node name="CityCamera" type="Camera2D" parent="CityViewLayer"]
+position = Vector2(2560, 2560)
+zoom = Vector2(0.18, 0.18)
+limit_left = 0
+limit_top = 0
+limit_right = 5120
+limit_bottom = 5120
+drag_margin_h_enabled = false
+drag_margin_v_enabled = false
+script = ExtResource("11")
+
+[node name="GameManager" type="Node" parent="CityViewLayer"]
+script = ExtResource("3")
+
+[node name="GlobalGame" type="Node" parent="."]
+script = ExtResource("1")
+
+[node name="UICanvas" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="TopBar" type="ColorRect" parent="UICanvas"]
+color = Color(0.1, 0.1, 0.15, 0.95)
+anchor_left = 0.0
+anchor_right = 1.0
+anchor_top = 0.0
+anchor_bottom = 0.0
+offset_left = 0
+offset_right = 0
+offset_top = 0
+offset_bottom = 48
+script = ExtResource("4")
+
+[node name="RCIPanel" type="ColorRect" parent="UICanvas"]
+color = Color(0.15, 0.15, 0.2, 0.9)
+anchor_left = 0.0
+anchor_right = 1.0
+anchor_top = 0.0
+anchor_bottom = 0.0
+offset_left = 0
+offset_right = 0
+offset_top = 48
+offset_bottom = 76
+script = ExtResource("5")
+
+[node name="BottomBar" type="ColorRect" parent="UICanvas"]
+color = Color(0.1, 0.1, 0.15, 0.95)
+anchor_left = 0.0
+anchor_right = 1.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 0
+offset_right = 0
+offset_top = -90
+offset_bottom = 0
+script = ExtResource("6")
+
+[node name="InfoCard" type="ColorRect" parent="UICanvas"]
+color = Color(0.12, 0.12, 0.18, 0.92)
+anchor_left = 0.0
+anchor_right = 1.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 0
+offset_right = 0
+offset_top = -200
+offset_bottom = -90
+visible = false
+script = ExtResource("7")
+
+[node name="SubMenu" type="ColorRect" parent="UICanvas"]
+script = ExtResource("8")
+
+[node name="SpriteManager" type="Node" parent="UICanvas"]
+script = ExtResource("9")
+
+[node name="CivSelectUI" type="ColorRect" parent="UICanvas"]
+script = ExtResource("10")
+
+[node name="LoadingScreen" type="ColorRect" parent="UICanvas"]
+script = ExtResource("14")
