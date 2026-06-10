@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/lab_node.gd" id="1"]
+
+[node name="LabNode" type="Node2D"]
+z_index = 5
+script = ExtResource("1")

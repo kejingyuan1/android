@@ -4,12 +4,16 @@
 extends Node
 
 const INITIAL_MONEY := 500000.0
+const INITIAL_WOOD := 50000.0
+const INITIAL_STONE := 30000.0
 const TAX_RATE := 2.0
 const ROAD_MAINTENANCE := 1.0
 const COMMERCIAL_INCOME := 5.0
 const INDUSTRIAL_INCOME := 8.0
 
 var money: float = INITIAL_MONEY
+var wood: float = INITIAL_WOOD
+var stone: float = INITIAL_STONE
 var total_income_last_tick: float = 0.0
 var total_expense_last_tick: float = 0.0
 var total_population: int = 0
@@ -78,9 +82,26 @@ func spend(amount: float, reason: String = "") -> bool:
 func is_bankrupt() -> bool:
 	return money < -1000.0
 
+## 检查是否支付得起多资源消耗
+func can_afford_resources(gold_amount: float, wood_amount: float, stone_amount: float) -> bool:
+	return money >= gold_amount and wood >= wood_amount and stone >= stone_amount
+
+## 消耗多资源
+func spend_resources(gold_amount: float, wood_amount: float, stone_amount: float, reason: String = "") -> bool:
+	if not can_afford_resources(gold_amount, wood_amount, stone_amount):
+		return false
+	money -= gold_amount
+	wood -= wood_amount
+	stone -= stone_amount
+	total_expense_last_tick += gold_amount + wood_amount + stone_amount
+	emit_signal("money_changed", money)
+	return true
+
 ## 重置经济
 func reset():
 	money = INITIAL_MONEY
+	wood = INITIAL_WOOD
+	stone = INITIAL_STONE
 	total_income_last_tick = 0.0
 	total_expense_last_tick = 0.0
 	total_population = 0

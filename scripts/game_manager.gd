@@ -54,7 +54,28 @@ var _current_variant := -1
 var _is_dragging := false
 var _drag_start_cell := Vector2i(-1, -1)
 var _info_mode := false
+var _ghost_sprite: Sprite2D = null   # 放置预览虚影
 var _remove_mode := false
+
+## 建筑类型 → 纹理信息映射（variant_id → {texture, label, cost}）
+const BUILDING_TEXTURES := {
+	# 基本民生
+	1000: {"texture": "power_plant", "label": "电力", "cost": 500},
+	1001: {"texture": "farm", "label": "农场", "cost": 200},
+	1002: {"texture": "water_pump", "label": "水", "cost": 300},
+	# 公共
+	2000: {"texture": "house1", "label": "住宅", "cost": 100},
+	2001: {"texture": "shop", "label": "商业", "cost": 300},
+	2002: {"texture": "trade_post", "label": "贸易", "cost": 400},
+	2003: {"texture": "office", "label": "办公", "cost": 500},
+	2004: {"texture": "factory", "label": "工厂", "cost": 600},
+	# 科技
+	3000: {"texture": "barracks", "label": "兵营", "cost": 800},
+	3001: {"texture": "lab", "label": "实验室", "cost": 1000},
+	3002: {"texture": "fire_station", "label": "消防", "cost": 700},
+	3003: {"texture": "hospital", "label": "医院", "cost": 1200},
+	3004: {"texture": "police", "label": "警局", "cost": 900},
+}
 
 ## TileMap 源 ID（每个图层只有一个 source，ID 固定为 0）
 
@@ -324,13 +345,17 @@ func _handle_game_input(event):
 		return
 
 	# 工具模式
-	if _current_tool >= 0:
+	if _current_tool >= 0 or _current_variant >= 0:
 		_handle_tool_input(event, cell_pos)
-	elif _current_variant >= 0:
-		_handle_tool_input(event, cell_pos)
+		# mouse motion 时更新虚影位置
+		if event is InputEventMouseMotion and _current_variant >= 0:
+			_update_ghost_position(cell_pos)
 	else:
 		if _is_press_event(event):
 			_handle_normal_tap(cell_pos)
+		# 清除虚影
+		if _ghost_sprite and _current_variant < 0:
+			_remove_ghost()
 
 func _is_ui_event(event) -> bool:
 	var pos_y = 0.0
@@ -352,7 +377,8 @@ func _get_world_position(event) -> Vector2:
 	return inv_xform * event.position
 
 func _handle_tool_input(event, cell_pos: Vector2i):
-	var v = _current_variant
+	# 优先使用 _current_variant（新建筑系统），回退到 _current_tool（旧道路/分区系统）
+	var v = _current_variant if _current_variant >= 0 else _current_tool
 	match v:
 		0, 1, 2:  # Road variants
 			_handle_road_input(event, cell_pos, v)
@@ -362,8 +388,17 @@ func _handle_tool_input(event, cell_pos: Vector2i):
 			_handle_zone_input(event, cell_pos, 3)
 		30:  # Industrial
 			_handle_zone_input(event, cell_pos, 4)
-		100, 101, 102, 103:  # Service
+		100, 101, 102, 103:  # Service (legacy)
 			_handle_service_input(event, cell_pos, v - 100)
+		# 新建筑变体：基本民生 (1000~1002)
+		1000, 1001, 1002:
+			_handle_building_placement(event, cell_pos, v)
+		# 公共建筑 (2000~2004)
+		2000, 2001, 2002, 2003, 2004:
+			_handle_building_placement(event, cell_pos, v)
+		# 科技建筑 (3000~3004)
+		3000, 3001, 3002, 3003, 3004:
+			_handle_building_placement(event, cell_pos, v)
 		200:  # Remove
 			_handle_remove_input(event, cell_pos)
 		201:  # Info
@@ -450,6 +485,94 @@ func _handle_service_input(event, cell_pos: Vector2i, service_type: int = 0):
 	elif _is_release_event(event):
 		_is_dragging = false
 
+## 通用建筑放置（单格点击，放置建筑纹理精灵）
+func _handle_building_placement(event, cell_pos: Vector2i, variant_id: int):
+	if not BUILDING_TEXTURES.has(variant_id):
+		return
+
+	var info = BUILDING_TEXTURES[variant_id]
+
+	if _is_press_event(event) and not _is_dragging:
+		_is_dragging = true
+
+		# 检查单元格是否可用
+		var cell = grid_map.get_cell(cell_pos.x, cell_pos.y)
+		if not cell or cell.has_building or cell.terrain == grid_map.TerrainType.ROAD:
+			_is_dragging = false
+			return
+
+		# 检查资金
+		if not economy.can_afford(info.cost):
+			print("资金不足，无法放置 ", info.label)
+			_is_dragging = false
+			return
+
+		# 扣费
+		economy.spend(info.cost, "建造" + info.label)
+
+		# 标记单元格
+		cell.has_building = true
+		cell.terrain = grid_map.TerrainType.ZONE_RESIDENTIAL  # 标记为已占用
+		cell.building_level = 1
+		cell.building_size_x = 1
+		cell.building_size_y = 1
+
+		# 创建建筑精灵
+		var tex_path = "res://assets/textures/buildings/%s.png" % info.texture
+		if ResourceLoader.exists(tex_path):
+			var sprite = Sprite2D.new()
+			sprite.texture = load(tex_path)
+			sprite.centered = true
+			sprite.position = Vector2(
+				cell_pos.x * CELL_SIZE + CELL_SIZE / 2.0,
+				cell_pos.y * CELL_SIZE + CELL_SIZE / 2.0
+			)
+			sprite.z_index = 5
+			sprite.scale = Vector2(0.8, 0.8)
+			building_container.add_child(sprite)
+			cell.building_ref = sprite
+
+		_update_cell_visual(cell_pos.x, cell_pos.y)
+		print("放置了 ", info.label, " 在 (", cell_pos.x, ", ", cell_pos.y, ")")
+
+		# 放置成功后清除虚影
+		_remove_ghost()
+
+	elif _is_release_event(event):
+		_is_dragging = false
+
+## 创建放置虚影（半透明建筑预览）
+func _update_ghost_position(cell_pos: Vector2i):
+	if _current_variant < 0:
+		_remove_ghost()
+		return
+
+	var info = BUILDING_TEXTURES.get(_current_variant)
+	if not info:
+		return
+
+	if not _ghost_sprite:
+		var tex_path = "res://assets/textures/buildings/%s.png" % info.texture
+		if not ResourceLoader.exists(tex_path):
+			return
+		_ghost_sprite = Sprite2D.new()
+		_ghost_sprite.texture = load(tex_path)
+		_ghost_sprite.centered = true
+		_ghost_sprite.modulate = Color(1, 1, 1, 0.5)
+		_ghost_sprite.z_index = 50
+		_ghost_sprite.scale = Vector2(0.8, 0.8)
+		building_container.add_child(_ghost_sprite)
+
+	_ghost_sprite.position = Vector2(
+		cell_pos.x * CELL_SIZE + CELL_SIZE / 2.0,
+		cell_pos.y * CELL_SIZE + CELL_SIZE / 2.0
+	)
+
+func _remove_ghost():
+	if _ghost_sprite:
+		_ghost_sprite.queue_free()
+		_ghost_sprite = null
+
 ## 辅助：判断按键按下（鼠标或触摸）
 func _is_press_event(event) -> bool:
 	return (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed) \
@@ -494,6 +617,7 @@ func _on_main_category_selected(category_id: int):
 		_current_variant = -1
 		_tool_active = false
 		_current_tool = -1
+		_remove_ghost()
 		return
 
 	_current_category = category_id
@@ -513,7 +637,6 @@ func _on_main_category_selected(category_id: int):
 ## 子菜单变体选中 → 激活工具
 func _on_variant_selected(variant_id: int):
 	_current_variant = variant_id
-	_current_tool = variant_id
 	_tool_active = true
 
 	camera.set_tool_active(true)

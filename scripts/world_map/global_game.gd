@@ -50,6 +50,20 @@ var transition_to_zoom: float = 1.0
 ## 信号
 signal view_changed(new_view: int)
 
+## 战斗系统引用
+var _barracks_manager: Node = null    # 兵营管理器
+var _world_combat: Node = null        # 世界地图战斗管理器
+var _creature_target: Node = null     # 当前选中的野怪节点
+var _creature_info_bg: ColorRect = null
+var _creature_info_panel: ColorRect = null
+var _attack_config_ui: Control = null # 兵力配置界面
+
+const CombatSystem = preload("res://scripts/combat/combat_system.gd")
+const ArmyUnit = preload("res://scripts/combat/army_unit.gd")
+const WorldCombat = preload("res://scripts/world_map/world_combat.gd")
+const AttackConfigUI = preload("res://scripts/ui/attack_config_ui.gd")
+const TroopData = preload("res://scripts/combat/troop_data.gd")
+
 func _ready():
 	# 预热 GPU 渲染管线：让世界地图提前可见 + 激活世界相机
 	# 此时 Sprite2D 无贴图（空渲染），但 Godot 会编译 Sprite2D 的 Vulkan shader
@@ -816,6 +830,119 @@ func _show_confirm_dialog(msg: String, on_confirm: Callable) -> void:
 	hbox.add_child(cancel_btn)
 
 	get_viewport().set_input_as_handled()
+
+## 显示野怪信息面板
+func _show_creature_info(world_pos: Vector2, data) -> void:
+	# 清除旧的野怪面板（防止重复叠加）
+	if _creature_info_bg:
+		_creature_info_bg.queue_free()
+		_creature_info_bg = null
+	if _creature_info_panel:
+		_creature_info_panel.queue_free()
+		_creature_info_panel = null
+
+	var habitat_name = "🌊 海洋" if data.habitat == 0 else "🌿 陆地"
+	var type_names = ["鱼龙", "水母精", "海星怪", "海马龙"] if data.habitat == 0 else ["飞翼鸟"]
+
+	var bg = ColorRect.new()
+	bg.color = Color(0, 0, 0, 0.35)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.name = "CreatureInfoBG"
+	bg.mouse_filter = Control.MOUSE_FILTER_STOP
+	ui_canvas.add_child(bg)
+	_creature_info_bg = bg
+
+	var panel = ColorRect.new()
+	panel.color = Color(0.08, 0.08, 0.15, 0.95)
+	panel.size = Vector2(320, 280)
+	var vp = get_viewport().get_visible_rect().size
+	panel.position = Vector2((vp.x - 320) * 0.5, (vp.y - 280) * 0.3)
+	ui_canvas.add_child(panel)
+	_creature_info_panel = panel
+
+	var title = Label.new()
+	title.text = "⚔️ 野生 " + type_names[data.sprite_type % type_names.size()]
+	title.position = Vector2(12, 8)
+	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_color_override("font_color", Color(1, 0.85, 0.5))
+	panel.add_child(title)
+
+	var info_lines = [
+		"栖地: " + habitat_name,
+		"等级: Lv.%d" % data.level,
+		"血量: %d/%d" % [data.hp, data.max_hp],
+		"攻击性: %.1f" % (data.aggression * 100) + "%",
+		"速度: %.0f" % data.speed,
+		"",
+		"威胁度: " + "⚠️".repeat(min(5, max(1, data.level / 6 + 1))),
+	]
+
+	var y = 36
+	for line in info_lines:
+		var lbl = Label.new()
+		lbl.text = line
+		lbl.position = Vector2(14, y)
+		lbl.add_theme_font_size_override("font_size", 14)
+		lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.9))
+		panel.add_child(lbl)
+		y += 20
+
+	# 捕获本地引用，通过元数据传递，避免闭包捕获陷阱
+	var close_btn = Button.new()
+	close_btn.text = "关闭"
+	close_btn.position = Vector2(260, 8)
+	close_btn.custom_minimum_size = Vector2(50, 24)
+	close_btn.set_meta("target_bg", bg)
+	close_btn.set_meta("target_panel", panel)
+	close_btn.pressed.connect(_on_close_creature_info.bind(close_btn))
+	panel.add_child(close_btn)
+
+	var attack_btn = Button.new()
+	attack_btn.text = "⚔️ 派兵攻击"
+	attack_btn.position = Vector2(60, y + 10)
+	attack_btn.custom_minimum_size = Vector2(200, 40)
+	attack_btn.add_theme_color_override("font_color", Color(0, 0, 0))
+	attack_btn.add_theme_color_override("font_hover_color", Color(0, 0, 0))
+	attack_btn.add_theme_stylebox_override("normal", _make_btn_style(Color(1, 0.7, 0.1)))
+	attack_btn.add_theme_stylebox_override("hover", _make_btn_style(Color(1, 0.8, 0.3)))
+	attack_btn.set_meta("target_bg", bg)
+	attack_btn.set_meta("target_panel", panel)
+	attack_btn.pressed.connect(_on_attack_creature)
+	panel.add_child(attack_btn)
+
+## 关闭野怪信息面板
+func _on_close_creature_info(btn: Button) -> void:
+	var bg = btn.get_meta("target_bg") as ColorRect
+	var panel = btn.get_meta("target_panel") as ColorRect
+	if bg and bg.get_parent():
+		bg.queue_free()
+	if panel and panel.get_parent():
+		panel.queue_free()
+	_creature_info_bg = null
+	_creature_info_panel = null
+
+## 攻击野怪
+func _on_attack_creature() -> void:
+	if _creature_info_bg and _creature_info_bg.get_parent():
+		_creature_info_bg.queue_free()
+		_creature_info_bg = null
+	if _creature_info_panel and _creature_info_panel.get_parent():
+		_creature_info_panel.queue_free()
+		_creature_info_panel = null
+	if _creature_target and _creature_target.has_meta("creature_data") and world_renderer:
+		var cdata = _creature_target.get_meta("creature_data")
+		_show_attack_config_ui(cdata, _creature_target)
+
+## 创建按钮样式
+func _make_btn_style(bg_color: Color) -> StyleBoxFlat:
+	var style = StyleBoxFlat.new()
+	style.bg_color = bg_color
+	style.corner_radius_top_left = 4
+	style.corner_radius_top_right = 4
+	style.corner_radius_bottom_left = 4
+	style.corner_radius_bottom_right = 4
+	return style
+
 func _input(event):
 	if current_view == ViewMode.WORLD_MAP:
 		# 移动主城模式下：Escape 或 鼠标右键取消
@@ -847,9 +974,18 @@ func _handle_world_input(event):
 		# 如果弹出菜单已打开，不处理地图点击（由 CityPopup 自己处理点击关闭）
 		if city_popup and city_popup.is_showing():
 			return
-		# 点击世界地图 → 检测是否点到城市
+		# 点击世界地图 → 检测是否点到城市或野怪
 		var world_pos = _screen_to_world(event.position)
 		if world_pos:
+			# 检测野怪点击（优先级高于城市）
+			var creature_node = world_renderer.get_creature_at(world_pos.x, world_pos.y) if world_renderer else null
+			if creature_node and creature_node.has_meta("creature_data"):
+				get_viewport().set_input_as_handled()
+				var data = creature_node.get_meta("creature_data")
+				_creature_target = creature_node  # 记录选中的野怪
+				_show_creature_info(creature_node.position, data)
+				return
+			# 检测城市点击
 			var city_key = world_renderer.get_city_at(world_pos.x, world_pos.y) if world_renderer else null
 			if city_key and current_city_data:
 				# 显示城市弹出菜单，并消耗事件阻止相机开始拖拽
@@ -944,3 +1080,81 @@ func _load_island_cache(seed_val: int) -> Variant:
 	var val = f.get_8()
 	f.close()
 	return val == 1
+
+# ========== 战斗系统 ==========
+
+## 获取或初始化兵营管理器
+func _get_barracks_manager() -> Node:
+	if _barracks_manager:
+		return _barracks_manager
+	# 尝试从城市视图层寻找兵营管理器
+	if city_manager:
+		# 检查 GameManager 下是否有 barracks_manager 子节点
+		for child in city_manager.get_children():
+			if child is Node:
+				var script_path = ""
+				if child.get_script():
+					script_path = child.get_script().get_path() if child.get_script().has_method("get_path") else ""
+				if "barracks_manager" in child.name.to_lower() or "barracks_manager" in script_path:
+					_barracks_manager = child
+					return _barracks_manager
+		# 未找到，创建一个
+		var bm = Node.new()
+		bm.set_script(preload("res://scripts/combat/barracks_manager.gd"))
+		city_manager.add_child(bm)
+		_barracks_manager = bm
+	return _barracks_manager
+
+## 获取或初始化世界战斗管理器
+func _get_world_combat() -> Node:
+	if _world_combat:
+		return _world_combat
+	var wc = Node.new()
+	wc.set_script(WorldCombat)
+	wc.setup(self)
+	world_renderer.add_child(wc)
+	_world_combat = wc
+	return _world_combat
+
+## 显示兵力配置界面
+func _show_attack_config_ui(data, creature_node: Node):
+	if _attack_config_ui:
+		_attack_config_ui.queue_free()
+		_attack_config_ui = null
+
+	_creature_target = creature_node
+
+	_attack_config_ui = AttackConfigUI.new()
+	var bm = _get_barracks_manager()
+	_attack_config_ui.setup(data, bm)
+
+	# 定位到屏幕中央
+	var vp = get_viewport().get_visible_rect().size
+	_attack_config_ui.position = Vector2((vp.x - 340) * 0.5, (vp.y - 380) * 0.25)
+	_attack_config_ui.attack_confirmed.connect(_on_attack_confirmed)
+	_attack_config_ui.cancelled.connect(_close_attack_config_ui)
+	ui_canvas.add_child(_attack_config_ui)
+
+## 关闭兵力配置界面
+func _close_attack_config_ui():
+	if _attack_config_ui:
+		_attack_config_ui.queue_free()
+		_attack_config_ui = null
+
+## 攻击确认回调
+func _on_attack_confirmed(deployment: Dictionary):
+	_close_attack_config_ui()
+	if not _creature_target or not current_city_data:
+		return
+	var city_pos = Vector2(current_city_data.world_x, current_city_data.world_y)
+	var combat = _get_world_combat()
+	combat.launch_attack(city_pos, _creature_target, deployment)
+	_creature_target = null
+
+## 直接请求派兵攻击（供外部调用）
+func request_attack(creature_node: Node, deployment: Dictionary) -> void:
+	if not creature_node or not current_city_data:
+		return
+	var city_pos = Vector2(current_city_data.world_x, current_city_data.world_y)
+	var combat = _get_world_combat()
+	combat.launch_attack(city_pos, creature_node, deployment)

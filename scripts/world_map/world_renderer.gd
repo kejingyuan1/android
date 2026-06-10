@@ -21,7 +21,7 @@ const WORLD_H := 100000.0             # 世界高度（用于精灵缩放 Y）
 const CHUNK_ROWS := 32                # 每块行数（每 32 行 yield 一帧）
 const CITY_ICON_SIZE := 16
 const CITY_MARKER_SCALE := 4.0        # 建筑贴图缩放（1024px → ~4000 世界单位）
-const CITY_CLICK_RADIUS := 5000       # 点击检测半径（世界单位）
+const CITY_CLICK_RADIUS := 1500       # 点击检测半径（世界单位）
 
 ## 资源图标层
 var resource_markers: Node2D = null
@@ -191,91 +191,127 @@ func place_city_marker(wx: int, wy: int, civ_id: int, city_name: String):
 	glow_tween.tween_property(marker, "modulate", Color(1.4, 1.4, 1.4), 1.5)
 	glow_tween.tween_property(marker, "modulate", Color(0.9, 0.9, 0.9), 1.5)
 
-## 在世界地图海洋区域生成游鱼（需在地图生成后调用）
-## wx, wy: 城市中心坐标，鱼会生成在城市附近的浅海区域
+## 生物栖地类型
+enum Habitat { OCEAN = 0, LAND = 1 }
+
+## 生物数据结构
+class CreatureData:
+	var habitat: int          # Habitat.OCEAN or Habitat.LAND
+	var sprite_type: int      # 0-3 索引到贴图列表
+	var level: int            # 等级 1-100
+	var hp: int
+	var max_hp: int
+	var speed: float          # 移动速度（世界单位/秒）
+	var aggression: float     # 攻击性 0-1
+	
+	func _init(_habitat: int, _type: int, _level: int):
+		habitat = _habitat
+		sprite_type = _type
+		level = _level
+		max_hp = 20 + _level * 3
+		hp = max_hp
+		speed = 30.0 + _level * 0.5  # 基础速度较慢
+		aggression = 0.1 + _level * 0.008
+
+## 在世界地图生成野怪（需在地图生成后调用）
+## wx, wy: 城市中心坐标
 func spawn_ocean_fish(wx: int, wy: int, count: int = 30) -> void:
-	# 清理旧鱼
+	# 清理旧精灵
 	for child in get_children():
-		if child.name.begins_with("Fish_"):
+		if child.name.begins_with("Creature_"):
 			child.queue_free()
 
 	if not world_gen:
 		return
 
+	# 加载精灵贴图
+	var water_tex_names = ["fish01", "jelly", "star", "seahorse"]
+	var water_textures = []
+	for name in water_tex_names:
+		water_textures.append(load("res://assets/textures/creatures/creature_%s.png" % name))
+	var land_tex = load("res://assets/textures/creatures/creature_bird.png")
+
 	var rng = RandomNumberGenerator.new()
 	rng.seed = world_gen.world_seed + 999
 
+	# === 生成水中野怪（浅海区域） ===
 	for i in range(count):
-		# 在城市附近 20000 单位半径内找浅海
-		var found := false
-		var fx := 0
-		var fy := 0
-		for _attempt in 100:
-			fx = wx + rng.randi_range(-20000, 20000)
-			fy = wy + rng.randi_range(-20000, 20000)
-			if fx < 0 or fx >= 100000 or fy < 0 or fy >= 100000:
-				continue
-			var t = world_gen.get_terrain(fx, fy)
-			if t == 1:  # 浅海
-				found = true
-				break
-		if not found:
+		var pos = _find_habitat_position(wx, wy, Habitat.OCEAN, rng)
+		if pos.x < 0:
 			continue
+		var tex_idx = i % water_textures.size()
+		var level = rng.randi_range(1, 30)
+		var data = CreatureData.new(Habitat.OCEAN, tex_idx, level)
+		_spawn_creature_sprite(pos, water_textures[tex_idx], data, rng)
 
-		# 鱼贴图：8×6 像素鱼形（→方向, 尾部在右侧）
-		# 形状: 头部尖, 身体圆, 尾巴分叉
-		var fsz = 8
-		var img = Image.create(fsz, 6, false, Image.FORMAT_RGBA8)
-		var fcol = Color(rng.randf_range(0.3, 0.8), rng.randf_range(0.4, 0.8), rng.randf_range(0.5, 0.95), 0.85)
-		var fcol2 = Color(fcol.r * 0.7, fcol.g * 0.7, fcol.b * 0.7, 0.7)  # 暗色尾部
-		# 像素鱼模板（1=身体, 2=尾巴, 0=透明）
-		# 眼睛: 4,2 位置
-		var fish_template = [
-			[0, 0, 0, 1, 0, 0, 2, 0],
-			[0, 0, 1, 1, 1, 1, 0, 2],
-			[0, 1, 1, 1, 1, 1, 1, 0],
-			[0, 1, 1, 1, 1, 1, 1, 0],
-			[0, 0, 1, 1, 1, 1, 0, 2],
-			[0, 0, 0, 1, 0, 0, 2, 0],
-		]
-		for py in range(6):
-			for px in range(fsz):
-				var v = fish_template[py][px]
-				if v == 1:
-					img.set_pixel(px, py, fcol)
-				elif v == 2:
-					img.set_pixel(px, py, fcol2)
-				# v=0: 透明（默认）
+	# === 生成陆地野怪（草地/森林区域） ===
+	for i in range(10):
+		var pos = _find_habitat_position(wx, wy, Habitat.LAND, rng)
+		if pos.x < 0 or not land_tex:
+			continue
+		var level = rng.randi_range(1, 30)
+		var data = CreatureData.new(Habitat.LAND, 0, level)
+		_spawn_creature_sprite(pos, land_tex, data, rng)
 
-		# 随机加一个小亮点当作眼睛
-		if rng.randf() > 0.3:
-			img.set_pixel(3, 2, Color(1, 1, 1, 0.9))
+## 在指定栖地内找随机位置
+func _find_habitat_position(cx: int, cy: int, habitat: int, rng: RandomNumberGenerator) -> Vector2i:
+	var range_size = 20000 if habitat == Habitat.OCEAN else 12000
+	for _attempt in 100:
+		var fx = cx + rng.randi_range(-range_size, range_size)
+		var fy = cy + rng.randi_range(-range_size, range_size)
+		if fx < 0 or fx >= 100000 or fy < 0 or fy >= 100000:
+			continue
+		var t = world_gen.get_terrain(fx, fy)
+		if habitat == Habitat.OCEAN and t == 1:  # 浅海
+			return Vector2i(fx, fy)
+		elif habitat == Habitat.LAND and t >= 2 and t <= 4:  # 沙地/草地/森林
+			return Vector2i(fx, fy)
+	return Vector2i(-1, -1)
 
-		var fish = Sprite2D.new()
-		fish.name = "Fish_%d" % i
-		fish.texture = ImageTexture.create_from_image(img)
-		fish.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		fish.centered = true
-		fish.position = Vector2(fx, fy)
-		var s = rng.randf_range(15, 40)
-		fish.scale = Vector2(s, s)
-		fish.z_index = 1
-		# 鱼随机朝左或朝右
-		fish.rotation = rng.randf_range(-0.3, 0.3)  # 轻微上下偏
-		if rng.randf() > 0.5:
-			fish.flip_h = true  # 一半朝左
-		add_child(fish)
+## 创建野怪精灵并添加动画
+func _spawn_creature_sprite(pos: Vector2i, tex: Texture2D, data: CreatureData, rng: RandomNumberGenerator) -> void:
+	var sprite = Sprite2D.new()
+	sprite.name = "Creature_%s_%d" % ["Water" if data.habitat == Habitat.OCEAN else "Land", randi()]
+	sprite.texture = tex
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite.centered = true
+	sprite.position = Vector2(pos.x, pos.y)
+	var s = rng.randf_range(1.5, 3.5) if data.habitat == Habitat.OCEAN else rng.randf_range(1.0, 2.0)
+	sprite.scale = Vector2(s, s)
+	sprite.z_index = 1
+	if rng.randf() > 0.5:
+		sprite.flip_h = true
+	sprite.rotation = rng.randf_range(-0.2, 0.2)
+	# 存储生物数据到元数据
+	sprite.set_meta("creature_data", data)
+	# 标记可点击（后续BOSS系统用）
+	sprite.set_meta("is_clickable", true)
+	add_child(sprite)
 
-		# 游动动画
-		var tween = fish.create_tween().set_loops()
-		tween.set_parallel(true)
-		var fwd = Vector2(1, 0).rotated(fish.rotation)
-		if fish.flip_h:
-			fwd = -fwd
-		var dist = rng.randf_range(1500, 4000)
-		var dur = rng.randf_range(6.0, 14.0)
-		tween.tween_property(fish, "position", fish.position + fwd * dist, dur)
-		tween.tween_property(fish, "position:y", fish.position.y + rng.randf_range(-200, 200), dur * 0.4)
+	# 随机方向缓慢游动/移动（短距离，避免穿模到不同地形）
+	var dir_angle = rng.randf_range(0, TAU)
+	var dir_vec = Vector2(cos(dir_angle), sin(dir_angle))
+	var dist = rng.randf_range(200, 600)  # 短距离
+	var dur = dist / data.speed  # 根据速度计算时长
+
+	var tween = sprite.create_tween().set_loops()
+	tween.set_parallel(false)
+	# 移动到目标点
+	tween.tween_property(sprite, "position", sprite.position + dir_vec * dist, dur)
+	tween.set_trans(Tween.TRANS_SINE)
+	# 停一下再随机下一个方向
+	tween.tween_interval(dur * 0.3)
+
+	# 定期刷新移动方向（无限循环tween内部不支持随机，所以用_process替代）
+	# 采用方案：多个固定方向的循环移动
+	for _j in range(3):
+		var a2 = dir_angle + rng.randf_range(-0.8, 0.8)
+		var d2 = Vector2(cos(a2), sin(a2))
+		var dist2 = rng.randf_range(200, 500)
+		var dur2 = dist2 / data.speed
+		tween.tween_property(sprite, "position", sprite.position + d2 * dist2, dur2)
+		tween.tween_interval(dur2 * 0.2)
+	# 循环回到第一个移动
 
 ## 获取世界坐标对应的城市标记
 func get_city_at(wx: int, wy: int):
@@ -291,6 +327,20 @@ func get_city_at(wx: int, wy: int):
 			closest_key = key
 	if closest_dist < CITY_CLICK_RADIUS:
 		return closest_key
+	return null
+
+## 获取世界坐标对应的野怪精灵
+func get_creature_at(wx: int, wy: int):
+	var closest: Node = null
+	var closest_dist = 99999999.0
+	for child in get_children():
+		if child.name.begins_with("Creature_") and child.has_meta("creature_data"):
+			var d = Vector2(wx - child.position.x, wy - child.position.y).length()
+			if d < closest_dist:
+				closest_dist = d
+				closest = child
+	if closest_dist < 300:  # 点击半径 300 世界单位（≈24px @ zoom 0.08）
+		return closest
 	return null
 
 ## 更新资源标记层（显示附近资源）
