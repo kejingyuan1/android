@@ -267,6 +267,22 @@ func _create_tilesets():
 
 ## 创建道路纹理（噪声路面 + 车道标线）
 func _create_road_texture(base_color: Color, road_type: String, size: int) -> Texture2D:
+	# 使用 PNG 道路贴图替代程序生成
+	var png_file = "road_dirt.png"
+	if road_type == "沥青路":
+		png_file = "road_asphalt.png"
+	elif road_type == "高速路":
+		png_file = "road_highway.png"
+
+	var png_path = "res://assets/textures/roads/%s" % png_file
+	if ResourceLoader.exists(png_path):
+		var png_img = load(png_path).get_image()
+		if png_img:
+			# 缩放到目标大小（32x32）
+			png_img.resize(size, size, Image.INTERPOLATE_NEAREST)
+			return ImageTexture.create_from_image(png_img)
+
+	# 回退：程序生成
 	var img = Image.create(size, size, false, Image.FORMAT_RGBA8)
 	var noise = FastNoiseLite.new()
 	noise.noise_type = FastNoiseLite.TYPE_PERLIN
@@ -278,23 +294,19 @@ func _create_road_texture(base_color: Color, road_type: String, size: int) -> Te
 	for y in range(size):
 		for x in range(size):
 			var n = noise.get_noise_2d(x, y) * 0.5 + 0.5  # 0~1
-			# 路面纹理：深色基础色 + 噪声变化
 			var r = base_color.r + n * 0.08
 			var g = base_color.g + n * 0.08
 			var b = base_color.b + n * 0.08
 
-			# 车道标线（沥青路/高速路的中间虚线）
 			if is_paved:
 				var mid = size / 2
 				var lane_offset = 6 if road_type == "高速路" else 3
-				# 中心虚线段
 				var dash = (y / 4) % 2 == 0
 				if abs(x - mid) < 1 and dash:
-					r += 0.5; g += 0.5; b += 0.5  # 白色虚线
-				# 高速路额外边线
+					r += 0.5; g += 0.5; b += 0.5
 				if road_type == "高速路":
 					if (x < 2 or x > size - 3) and (y > 2 and y < size - 2):
-						r += 0.6; g += 0.6; b += 0.6  # 白色边线
+						r += 0.6; g += 0.6; b += 0.6
 			else:
 				# 土路：两侧草边
 				if x < 2 or x > size - 3:

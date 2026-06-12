@@ -122,8 +122,18 @@ func _load_texture(texture_file: String) -> Texture2D:
 ## 为道路类型生成预览纹理（48x48）
 func _create_road_texture(road_type: String) -> Texture2D:
 	var size = 48
+	# 尝试加载 PNG 道路贴图
+	var png_file = road_type + ".png"
+	var png_path = "res://assets/textures/roads/%s" % png_file
+	if ResourceLoader.exists(png_path):
+		var img = load(png_path).get_image()
+		if img:
+			img.resize(size, size, Image.INTERPOLATE_NEAREST)
+			return ImageTexture.create_from_image(img)
+
+	# 回退：程序生成
 	var img = Image.create(size, size, false, Image.FORMAT_RGBA8)
-	var color = Color(0.55, 0.45, 0.3)  # 土路
+	var color = Color(0.55, 0.45, 0.3)
 	if road_type == "road_asphalt":
 		color = Color(0.25, 0.25, 0.25)
 	elif road_type == "road_highway":
@@ -136,9 +146,8 @@ func _create_road_texture(road_type: String) -> Texture2D:
 				var mid = size / 2
 				var dash = (y / 6) % 2 == 0
 				if abs(x - mid) < 2 and dash:
-					c = Color(0.85, 0.85, 0.85)  # 白色虚线
+					c = Color(0.85, 0.85, 0.85)
 			else:
-				# 土路：两侧草边
 				if x < 2 or x > size - 3:
 					c = Color(0.3, 0.55, 0.2)
 			img.set_pixel(x, y, c)
