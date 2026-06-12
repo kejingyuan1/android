@@ -49,54 +49,42 @@ func show_menu(title: String, variants: Array):
 	scroll.add_child(hbox)
 
 	for v in variants:
-		var container = VBoxContainer.new()
-		container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		container.custom_minimum_size = Vector2(64, 88)
-		container.alignment = VBoxContainer.ALIGNMENT_CENTER
-
-		# 用 ColorRect 作为透明点击层（覆盖整个容器，在 VBoxContainer 中作为子元素但锚定在父容器）
-		var click_overlay = ColorRect.new()
-		click_overlay.color = Color(0, 0, 0, 0)
-		click_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-		click_overlay.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		click_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 		var variant_id = v.id
-		click_overlay.gui_input.connect(func(_event):
-			if _event is InputEventMouseButton and _event.pressed and _event.button_index == MOUSE_BUTTON_LEFT:
-				_on_variant_pressed(variant_id)
-		)
-		container.add_child(click_overlay)
 
-		# 建筑纹理图标 48x48
-		var tex_rect = TextureRect.new()
-		tex_rect.custom_minimum_size = Vector2(48, 48)
-		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		tex_rect.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		# 用 Button 作为整个可点击项，不使用 VBoxContainer
+		var btn = Button.new()
+		btn.custom_minimum_size = Vector2(64, 86)
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+		btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
+		# 设置图标
 		var tex = _load_texture(v.texture_file)
 		if tex:
-			tex_rect.texture = tex
-		container.add_child(tex_rect)
+			btn.icon = tex
 
-		# 建筑名称
-		var lbl = Label.new()
-		lbl.text = v.label
-		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		lbl.add_theme_color_override("font_color", Color(0.7, 0.7, 0.8))
-		lbl.add_theme_font_size_override("font_size", 10)
-		container.add_child(lbl)
+		# 设置文字（名称 + 成本）
+		btn.text = v.label + "\n💰" + str(v.cost)
+		btn.add_theme_font_size_override("font_size", 10)
+		btn.add_theme_color_override("font_color", Color(0.7, 0.7, 0.8))
+		btn.add_theme_color_override("font_hover_color", Color(0.9, 0.9, 1.0))
 
-		# 成本
-		var cost_lbl = Label.new()
-		cost_lbl.text = "💰" + str(v.cost)
-		cost_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		cost_lbl.add_theme_color_override("font_color", Color(0.8, 0.75, 0.3))
-		cost_lbl.add_theme_font_size_override("font_size", 9)
-		container.add_child(cost_lbl)
+		# 透明样式
+		var bg_norm = StyleBoxEmpty.new()
+		var bg_hover = StyleBoxFlat.new()
+		bg_hover.bg_color = Color(0.35, 0.35, 0.45, 0.4)
+		bg_hover.corner_radius_top_left = 4
+		bg_hover.corner_radius_top_right = 4
+		bg_hover.corner_radius_bottom_left = 4
+		bg_hover.corner_radius_bottom_right = 4
+		btn.add_theme_stylebox_override("normal", bg_norm)
+		btn.add_theme_stylebox_override("hover", bg_hover)
+		btn.add_theme_stylebox_override("pressed", bg_hover)
 
-		hbox.add_child(container)
-		_buttons.append({"overlay": click_overlay, "container": container, "id": v.id})
+		btn.pressed.connect(_on_variant_pressed.bind(v.id))
+
+		hbox.add_child(btn)
+		_buttons.append({"btn": btn, "id": v.id})
 
 	# 如果当前有已选中的建筑，恢复高亮
 	_update_selection()
@@ -107,8 +95,19 @@ func show_menu(title: String, variants: Array):
 func _update_selection():
 	for entry in _buttons:
 		var is_selected = (entry["id"] == _selected_variant_id)
-		var c = Color(0.4, 0.6, 0.4, 0.35) if is_selected else Color(0.25, 0.25, 0.35, 0.0)
-		entry["overlay"].color = c
+		var btn = entry["btn"] as Button
+		if not btn:
+			continue
+		if is_selected:
+			var bg_sel = StyleBoxFlat.new()
+			bg_sel.bg_color = Color(0.4, 0.6, 0.4, 0.5)
+			bg_sel.corner_radius_top_left = 4
+			bg_sel.corner_radius_top_right = 4
+			bg_sel.corner_radius_bottom_left = 4
+			bg_sel.corner_radius_bottom_right = 4
+			btn.add_theme_stylebox_override("normal", bg_sel)
+		else:
+			btn.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
 
 ## 加载纹理：道路类型使用程序生成，建筑使用 PNG 贴图
 func _load_texture(texture_file: String) -> Texture2D:
@@ -159,8 +158,13 @@ func _on_variant_pressed(variant_id: int):
 	_selected_variant_id = variant_id
 	_update_selection()
 	emit_signal("variant_selected", variant_id)
-	# 延迟隐藏菜单，让当前点击事件先经过 _input，但 _is_ui_event 仍能识别
-	call_deferred("_deferred_hide")
+	# 先显示 0.5 秒高亮让用户看到选中了什么，再延迟隐藏
+	call_deferred("_flash_selection_then_hide")
+
+func _flash_selection_then_hide():
+	var tween = create_tween()
+	tween.tween_interval(0.5)
+	tween.tween_callback(_deferred_hide)
 
 func _deferred_hide():
 	visible = false
