@@ -55,6 +55,7 @@ var _is_dragging := false
 var _drag_start_cell := Vector2i(-1, -1)
 var _info_mode := false
 var _ghost_sprite: Sprite2D = null   # 放置预览虚影
+var _ignore_next_click := false      # 跳过子菜单选中后的第一次点击
 var _remove_mode := false
 
 ## 建筑类型 → 纹理信息映射（variant_id → {texture, label, cost}）
@@ -336,6 +337,14 @@ func _handle_game_input(event):
 	# 忽略 UI 上的事件
 	if _is_ui_event(event):
 		return
+
+	# 跳过从子菜单选中后的第一次点击（该点击已用于选中，不应再触发放置）
+	if _ignore_next_click and _is_press_event(event):
+		_ignore_next_click = false
+		return
+	# 鼠标移动不消耗忽略标记
+	if not (event is InputEventMouseMotion):
+		_ignore_next_click = false
 
 	var world_pos = _get_world_position(event)
 	var cell_pos = grid_map.world_to_grid(world_pos)
@@ -665,6 +674,7 @@ func _on_main_category_selected(category_id: int):
 func _on_variant_selected(variant_id: int):
 	_current_variant = variant_id
 	_tool_active = true
+	_ignore_next_click = true   # 跳过子菜单点击的本次传播
 
 	camera.set_tool_active(true)
 
