@@ -218,20 +218,24 @@ func _init_ui():
 		bottom_bar.connect("main_category_selected", Callable(self, "_on_main_category_selected"))
 
 func _create_tilesets():
-	# 道路 TileSet — 3 种道路
+	# 道路 TileSet — 4 种道路贴图（水平/垂直/交叉/单格）
 	var road_tileset = TileSet.new()
 	road_tileset.tile_size = Vector2i(CELL_SIZE, CELL_SIZE)
 	var road_configs = [
-		{"color": Color(0.55, 0.45, 0.3), "name": "土路"},    # 0: 土路
-		{"color": Color(0.25, 0.25, 0.25), "name": "沥青路"}, # 1: 沥青路
-		{"color": Color(0.12, 0.12, 0.12), "name": "高速路"}, # 2: 高速路
+		{"color": Color(0.55, 0.45, 0.3), "name": "土路", "sheet": "dirt_sheet.png"},
+		{"color": Color(0.25, 0.25, 0.25), "name": "沥青路", "sheet": "asphalt_sheet.png"},
+		{"color": Color(0.12, 0.12, 0.12), "name": "高速路", "sheet": "highway_sheet.png"},
 	]
 	for cfg in road_configs:
-		var tex = _create_road_texture(cfg.color, cfg.name, CELL_SIZE)
+		var tex = _load_road_sheet(cfg.sheet, CELL_SIZE)
 		var source = TileSetAtlasSource.new()
 		source.texture = tex
 		source.texture_region_size = Vector2i(CELL_SIZE, CELL_SIZE)
-		source.create_tile(Vector2i(0, 0))
+		# 4 个子图块：0=水平, 1=垂直, 2=十字交叉, 3=纯路面
+		for idx in range(4):
+			var ax = idx % 2
+			var ay = idx / 2
+			source.create_tile(Vector2i(ax, ay))
 		road_tileset.add_source(source)
 	road_map_layer.tile_set = road_tileset
 	road_map_layer.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -266,6 +270,16 @@ func _create_tilesets():
 	highlight_map_layer.tile_set = hl_tileset
 
 ## 创建道路纹理（噪声路面 + 车道标线）
+## 加载道路 spritesheet（64x64，包含 4 个 32x32 子图块）
+func _load_road_sheet(sheet_name: String, size: int) -> Texture2D:
+	var path = "res://assets/textures/roads/%s" % sheet_name
+	if ResourceLoader.exists(path):
+		var img = load(path).get_image()
+		if img and img.get_width() == size * 2 and img.get_height() == size * 2:
+			return load(path)
+	# 回退
+	return _create_road_texture(Color(0.5, 0.5, 0.5), "土路", size)
+
 func _create_road_texture(base_color: Color, road_type: String, size: int) -> Texture2D:
 	# 使用 PNG 道路贴图替代程序生成
 	var png_file = "road_dirt.png"
@@ -761,6 +775,21 @@ func _calculate_rci_demand():
 func _update_visuals():
 	_full_render()
 
+## 根据邻居计算道路图块坐标 (0,0)=水平 (1,0)=垂直 (0,1)=十字 (1,1)=孤岛
+func _get_road_tile_coords(cx: int, cy: int) -> Vector2i:
+	var u = cy > 0 and grid_map.get_cell(cx, cy-1) and grid_map.get_cell(cx, cy-1).terrain == grid_map.TerrainType.ROAD
+	var d = cy < GRID_HEIGHT-1 and grid_map.get_cell(cx, cy+1) and grid_map.get_cell(cx, cy+1).terrain == grid_map.TerrainType.ROAD
+	var l = cx > 0 and grid_map.get_cell(cx-1, cy) and grid_map.get_cell(cx-1, cy).terrain == grid_map.TerrainType.ROAD
+	var r = cx < GRID_WIDTH-1 and grid_map.get_cell(cx+1, cy) and grid_map.get_cell(cx+1, cy).terrain == grid_map.TerrainType.ROAD
+	if (l or r) and (u or d):
+		return Vector2i(0, 1)
+	elif l or r:
+		return Vector2i(0, 0)
+	elif u or d:
+		return Vector2i(1, 0)
+	else:
+		return Vector2i(1, 1)
+
 ## 增量更新：只更新道路/分区显示（地形是静态纹理，不变）
 func _update_cell_visual(x: int, y: int):
 	var cell = grid_map.get_cell(x, y)
@@ -772,7 +801,8 @@ func _update_cell_visual(x: int, y: int):
 	zone_map_layer.set_cell(pos)
 
 	if cell.terrain == grid_map.TerrainType.ROAD:
-		road_map_layer.set_cell(pos, cell.road_type if cell.road_type < 3 else 0, Vector2i(0, 0))
+		var coords = _get_road_tile_coords(x, y)
+		road_map_layer.set_cell(pos, cell.road_type if cell.road_type < 3 else 0, coords)
 	elif grid_map.is_zoned(x, y) and not cell.has_building:
 		# 有建筑时隐藏分区色（建筑外观已体现类型）
 		var src = 0
@@ -797,7 +827,8 @@ func _full_render():
 			var pos = Vector2i(x, y)
 
 			if cell.terrain == grid_map.TerrainType.ROAD:
-				road_map_layer.set_cell(pos, cell.road_type if cell.road_type < 3 else 0, Vector2i(0, 0))
+				var coords = _get_road_tile_coords(x, y)
+				road_map_layer.set_cell(pos, cell.road_type if cell.road_type < 3 else 0, coords)
 			elif cell.terrain == grid_map.TerrainType.ZONE_RESIDENTIAL and not cell.has_building:
 				zone_map_layer.set_cell(pos, 0, Vector2i(0, 0))
 			elif cell.terrain == grid_map.TerrainType.ZONE_COMMERCIAL and not cell.has_building:

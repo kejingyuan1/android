@@ -122,14 +122,16 @@ func _load_texture(texture_file: String) -> Texture2D:
 ## 为道路类型生成预览纹理（48x48）
 func _create_road_texture(road_type: String) -> Texture2D:
 	var size = 48
-	# 尝试加载 PNG 道路贴图
-	var png_file = road_type + ".png"
+	# 加载 spritesheet 中的水平道路格作为预览
+	var png_file = road_type.replace("road_", "") + "_sheet.png"
 	var png_path = "res://assets/textures/roads/%s" % png_file
 	if ResourceLoader.exists(png_path):
 		var img = load(png_path).get_image()
 		if img:
-			img.resize(size, size, Image.INTERPOLATE_NEAREST)
-			return ImageTexture.create_from_image(img)
+			var tile = Image.create(32, 32, false, Image.FORMAT_RGBA8)
+			tile.blit_rect(img, Rect2i(0, 0, 32, 32), 0, 0)
+			tile.resize(size, size, Image.INTERPOLATE_NEAREST)
+			return ImageTexture.create_from_image(tile)
 
 	# 回退：程序生成
 	var img = Image.create(size, size, false, Image.FORMAT_RGBA8)
