@@ -54,6 +54,19 @@ func show_menu(title: String, variants: Array):
 		container.custom_minimum_size = Vector2(64, 88)
 		container.alignment = VBoxContainer.ALIGNMENT_CENTER
 
+		# 用 ColorRect 作为透明点击层（覆盖整个容器，在 VBoxContainer 中作为子元素但锚定在父容器）
+		var click_overlay = ColorRect.new()
+		click_overlay.color = Color(0, 0, 0, 0)
+		click_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+		click_overlay.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		click_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+		var variant_id = v.id
+		click_overlay.gui_input.connect(func(_event):
+			if _event is InputEventMouseButton and _event.pressed and _event.button_index == MOUSE_BUTTON_LEFT:
+				_on_variant_pressed(variant_id)
+		)
+		container.add_child(click_overlay)
+
 		# 建筑纹理图标 48x48
 		var tex_rect = TextureRect.new()
 		tex_rect.custom_minimum_size = Vector2(48, 48)
@@ -82,20 +95,8 @@ func show_menu(title: String, variants: Array):
 		cost_lbl.add_theme_font_size_override("font_size", 9)
 		container.add_child(cost_lbl)
 
-		# 用 ColorRect 作为背景，点击用透明按钮覆盖
-		var btn = Button.new()
-		btn.text = ""
-		btn.set_anchors_preset(Control.PRESET_FULL_RECT)
-		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		btn.add_theme_color_override("font_color", Color(0, 0, 0, 0))
-		btn.add_theme_stylebox_override("normal", _make_transparent_style(Color(0.25, 0.25, 0.35, 0.0)))
-		btn.add_theme_stylebox_override("hover", _make_transparent_style(Color(0.35, 0.35, 0.45, 0.4)))
-		btn.add_theme_stylebox_override("pressed", _make_transparent_style(Color(0.2, 0.2, 0.3, 0.5)))
-		btn.pressed.connect(_on_variant_pressed.bind(v.id))
-		container.add_child(btn)
-
 		hbox.add_child(container)
-		_buttons.append({"btn": btn, "container": container, "id": v.id})
+		_buttons.append({"overlay": click_overlay, "container": container, "id": v.id})
 
 	# 如果当前有已选中的建筑，恢复高亮
 	_update_selection()
@@ -106,15 +107,8 @@ func show_menu(title: String, variants: Array):
 func _update_selection():
 	for entry in _buttons:
 		var is_selected = (entry["id"] == _selected_variant_id)
-		var style = _make_transparent_style(Color(0.4, 0.6, 0.4, 0.35) if is_selected else Color(0.25, 0.25, 0.35, 0.0))
-		entry["btn"].add_theme_stylebox_override("normal", style)
-		entry["btn"].add_theme_stylebox_override("hover", _make_transparent_style(Color(0.35, 0.35, 0.45, 0.4)))
-
-## 创建透明点击样式
-func _make_transparent_style(bg_color: Color) -> StyleBoxFlat:
-	var style = StyleBoxFlat.new()
-	style.bg_color = bg_color
-	return style
+		var c = Color(0.4, 0.6, 0.4, 0.35) if is_selected else Color(0.25, 0.25, 0.35, 0.0)
+		entry["overlay"].color = c
 
 ## 加载纹理：道路类型使用程序生成，建筑使用 PNG 贴图
 func _load_texture(texture_file: String) -> Texture2D:
