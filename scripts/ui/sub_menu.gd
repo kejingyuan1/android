@@ -165,4 +165,9 @@ func _on_variant_pressed(variant_id: int):
 	_selected_variant_id = variant_id
 	_update_selection()
 	emit_signal("variant_selected", variant_id)
-	hide_menu()
+	# 延迟隐藏菜单，让当前点击事件先经过 _input，但 _is_ui_event 仍能识别
+	call_deferred("_deferred_hide")
+
+func _deferred_hide():
+	visible = false
+	_clear_buttons()
