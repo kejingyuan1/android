@@ -409,11 +409,15 @@ func _handle_road_input(event, cell_pos: Vector2i, road_type: int = 0):
 		road_system.start_draw(cell_pos, road_type)
 		_update_cell_visual(cell_pos.x, cell_pos.y)
 		_is_dragging = true
+		# 道路铺设提示
+		var road_names = ["土路", "沥青路", "高速路"]
+		_show_toast("🛣️ 开始铺设 " + road_names[road_type] + " - 拖拽延伸，松手结束")
 	elif _is_release_event(event):
 		if _is_dragging:
 			road_system.end_draw()
 			_is_dragging = false
 			_full_render()
+			_show_toast("✅ 道路铺设完成")
 	elif _is_drag_event(event):
 		if _is_dragging:
 			road_system.continue_draw(cell_pos, road_type)
@@ -498,6 +502,7 @@ func _handle_building_placement(event, cell_pos: Vector2i, variant_id: int):
 		# 检查单元格是否可用
 		var cell = grid_map.get_cell(cell_pos.x, cell_pos.y)
 		if not cell or cell.has_building or cell.terrain == grid_map.TerrainType.ROAD:
+			print("该位置不可放置 ", info.label)
 			_is_dragging = false
 			return
 
@@ -512,7 +517,7 @@ func _handle_building_placement(event, cell_pos: Vector2i, variant_id: int):
 
 		# 标记单元格
 		cell.has_building = true
-		cell.terrain = grid_map.TerrainType.ZONE_RESIDENTIAL  # 标记为已占用
+		cell.terrain = grid_map.TerrainType.ZONE_RESIDENTIAL
 		cell.building_level = 1
 		cell.building_size_x = 1
 		cell.building_size_y = 1
@@ -533,6 +538,9 @@ func _handle_building_placement(event, cell_pos: Vector2i, variant_id: int):
 			cell.building_ref = sprite
 
 		_update_cell_visual(cell_pos.x, cell_pos.y)
+
+		# 放置成功提示
+		_show_toast("✅ %s 已建造" % info.label)
 		print("放置了 ", info.label, " 在 (", cell_pos.x, ", ", cell_pos.y, ")")
 
 		# 放置成功后清除虚影
@@ -572,6 +580,25 @@ func _remove_ghost():
 	if _ghost_sprite:
 		_ghost_sprite.queue_free()
 		_ghost_sprite = null
+
+## 显示顶部通知提示
+func _show_toast(msg: String):
+	if not top_bar or not is_inside_tree():
+		print("[Toast] ", msg)
+		return
+	var label = Label.new()
+	label.text = msg
+	label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.8))
+	label.add_theme_font_size_override("font_size", 16)
+	label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+	label.add_theme_constant_override("shadow_outline_size", 2)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.position = Vector2(400, 80)
+	label.size = Vector2(480, 36)
+	top_bar.add_child(label)
+	var t = label.create_tween().set_parallel()
+	t.tween_property(label, "modulate", Color(1, 1, 1, 0), 2.5).set_delay(1.5)
+	t.tween_callback(func(): if label and label.get_parent(): label.queue_free()).set_delay(4.0)
 
 ## 辅助：判断按键按下（鼠标或触摸）
 func _is_press_event(event) -> bool:
