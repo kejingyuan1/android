@@ -234,7 +234,7 @@ func _create_tilesets():
 		source.create_tile(Vector2i(0, 0))
 		road_tileset.add_source(source)
 	road_map_layer.tile_set = road_tileset
-	road_map_layer.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	road_map_layer.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 	# 分区 TileSet
 	var zone_tileset = TileSet.new()
@@ -278,8 +278,8 @@ func _create_road_texture(base_color: Color, road_type: String, size: int) -> Te
 	if ResourceLoader.exists(png_path):
 		var png_img = load(png_path).get_image()
 		if png_img:
-			# 缩放到目标大小（32x32）
-			png_img.resize(size, size, Image.INTERPOLATE_NEAREST)
+			if png_img.get_width() != size:
+				png_img.resize(size, size, Image.INTERPOLATE_NEAREST)
 			return ImageTexture.create_from_image(png_img)
 
 	# 回退：程序生成
