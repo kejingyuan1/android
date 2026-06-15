@@ -1,7 +1,7 @@
 # DamageNumber.gd — 飘浮伤害数字
 extends Node2D
 
-func show(world_pos, amount, color = Color(1, 0.3, 0.3, 1)):
+func show_damage(world_pos, amount, color = Color(1, 0.3, 0.3, 1)):
     position = world_pos
     var label = Label.new()
     label.text = "-" + str(amount)
