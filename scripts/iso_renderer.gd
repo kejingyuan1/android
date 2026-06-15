@@ -47,14 +47,11 @@ func _get_road_sheet_key(road_type):
 func update_road(gx, gy, road_type):
 	if _road_container == null:
 		return
-	if _road_sheets.size() == 0:
-		# 回退：创建一个彩色菱形确保至少能看到
-		_create_fallback_road(gx, gy, road_type)
-		return
 	
-	var key = _get_road_sheet_key(road_type)
-	var sheet = _road_sheets.get(key)
+	# 尝试加载纹理（懒加载方式）
+	var sheet = _get_or_load_sheet(road_type)
 	if sheet == null:
+		_create_fallback_road(gx, gy, road_type)
 		return
 	
 	var coords = _get_road_coords(gx, gy)
@@ -71,12 +68,25 @@ func update_road(gx, gy, road_type):
 		_road_container.add_child(sprite)
 		_road_sprites[sprite_key] = sprite
 	
-	# 使用 AtlasTexture 避免 get_image() 返回 null 的问题
-	var atlas = AtlasTexture.new()
-	atlas.atlas = sheet
-	atlas.region = Rect2(atlas_x, atlas_y, TILE_W, TILE_H)
-	sprite.texture = atlas
+	# 使用 Sprite2D region_rect 裁剪子图块（最可靠的方案）
+	sprite.texture = sheet
+	sprite.region_enabled = true
+	sprite.region_rect = Rect2(atlas_x, atlas_y, TILE_W, TILE_H)
 	sprite.position = grid_to_world(gx, gy)
+
+func _get_or_load_sheet(road_type):
+	var key = _get_road_sheet_key(road_type)
+	# 检查缓存
+	if _road_sheets.has(key):
+		return _road_sheets[key]
+	# 尝试加载
+	var path = "res://assets/textures/roads/iso_%s.png" % key
+	if ResourceLoader.exists(path):
+		var tex = load(path)
+		if tex:
+			_road_sheets[key] = tex
+			return tex
+	return null
 
 func _create_fallback_road(gx, gy, road_type):
 	# 备选方案：程序生成彩色菱形
