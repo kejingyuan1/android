@@ -16,6 +16,7 @@ var zone_system: Node
 var building_system: Node
 var save_manager: Node
 var service_system: Node
+var worker_sys: Node
 
 ## 节点引用（使用 var 声明，在 _init_tilemaps 中手动赋值）
 var camera: Node
@@ -208,6 +209,11 @@ func _init_systems():
 	# 需求信号连接
 	road_system.connect("road_changed", Callable(self, "_on_road_changed"))
 	building_system.connect("buildings_updated", Callable(self, "_on_buildings_updated"))
+
+	# 创建工人系统
+	worker_sys = preload("res://scripts/worker/worker_system.gd").new()
+	add_child(worker_sys)
+	worker_sys.connect("job_completed", Callable(self, "_on_worker_job_completed"))
 
 func _init_tilemaps():
 	# 通过父节点查找兄弟节点下的子节点
@@ -628,6 +634,15 @@ func _handle_building_placement(event, cell_pos: Vector2i, variant_id: int):
 
 		# 扣费
 		economy.spend(info.cost, "建造" + info.label)
+
+		# 工人队列检查
+		if worker_sys:
+			var build_time = _get_build_time(variant_id, info.cost)
+			if not worker_sys.add_to_queue(cell_pos.x, cell_pos.y, variant_id, false, build_time):
+				_show_toast("⚠️ 没有空闲工人或队列已满")
+				_is_dragging = false
+				economy.add_money(info.cost)  # 退款
+				return
 
 		# 标记单元格
 		cell.has_building = true
@@ -1091,6 +1106,9 @@ func _process(delta):
 
 	save_manager.update(delta)
 
+	if worker_sys:
+		worker_sys.process(delta)
+
 func _run_sim_tick():
 	# 1. 计算 RCI 需求
 	_calculate_rci_demand()
@@ -1314,6 +1332,26 @@ func try_upgrade_building(cell_pos: Vector2i, cell):
 	if building_system and building_system.has_method("_try_upgrade_building"):
 		building_system._try_upgrade_building(cell)
 		_update_cell_visual(cell_pos.x, cell_pos.y)
+
+## 工人回调：建造/升级完成
+func _on_worker_job_completed(cx, cy, variant_id, is_upgrade):
+	if is_upgrade:
+		# 升级完成
+		var cell = grid_map.get_cell(cx, cy)
+		if cell:
+			cell.building_level += 1
+			if cell.building_ref and cell.building_ref.has_method("update_level"):
+				cell.building_ref.update_level(cell.building_level)
+		_show_toast("⬆️ 建筑已升级到 " + str(cell.building_level if cell else "?"))
+	else:
+		# 新建完成 -> 调用现有的 _place_building_at 逻辑
+		_show_toast("✅ 建造完成！")
+	_full_render()
+
+## 获取建筑的建造时间
+func _get_build_time(variant_id, cost):
+	# 基础建造时间 = 成本 / 100 秒（上限300秒）
+	return clamp(float(cost) / 100.0 * 60.0, 5.0, 300.0)
 
 ## 调试：生成测试用敌方单位
 func _spawn_test_enemy(target_world_pos):
