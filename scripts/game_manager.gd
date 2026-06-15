@@ -178,6 +178,7 @@ func _init_tilemaps():
 	if not iso_node:
 		iso_node = Node2D.new()
 		iso_node.name = "IsoRenderer"
+		iso_node.set_script(preload("res://scripts/iso_renderer.gd"))
 		parent.get_node("GameWorld").add_child(iso_node)
 	iso_renderer = iso_node
 	road_map_layer = parent.get_node("GameWorld/RoadMap")
