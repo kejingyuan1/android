@@ -27,6 +27,8 @@ var world_renderer: Node = null  # WorldRenderer (Node2D)
 var city_manager: Node = null    # 城市管理器（原 game_manager）
 var current_city_data = null     # WorldCityData
 var save_manager: Node = null    # SaveManager
+# 大本营在城市视图中的世界坐标（由 GameManager 初始化时设置）
+var town_hall_world_pos := Vector2(1120, 2960)  # 默认 grid(110,75)→等距世界坐标
 var city_popup: Control = null   # 主城弹出菜单
 var _loading_show_time: float = 0.0  # 加载画面开始显示的时间戳
 const MIN_LOADING_TIME: float = 2.5  # 最短显示时长（秒），确保动画可见
@@ -421,13 +423,24 @@ func enter_city_view():
 		var flat_hl = game_world.get_node_or_null("HighlightMap")
 		if flat_hl: flat_hl.visible = false
 
-	# 计算城市视图的中心坐标和初始缩放（刚好看到全图）
-	# 等距地图中心: grid_to_world(120, 80) = ((120-80)*32, (120+80)*16) = (1280, 3200)
-	var city_center_x = 1280
-	var city_center_y = 3200
+	# 计算城市视图的中心坐标和初始缩放
+	# 使用大本营位置作为中心点，而非地图几何中心
+	var city_center_x = town_hall_world_pos.x
+	var city_center_y = town_hall_world_pos.y
 	city_camera.position = Vector2(city_center_x, city_center_y)
-	# 缩放使整个地图适配 1280×720 视口
-	city_camera.zoom = Vector2(0.18, 0.18)
+	# 从远视图开始 → 拉近到大本营
+	city_camera.zoom = Vector2(0.12, 0.12)
+	# 禁用边界钳制，避免动画过程中被拉回
+	if city_camera.has_method("set_clamp_enabled"):
+		city_camera.set_clamp_enabled(false)
+	
+	# 缩放动画：从全地图拉近到大本营周边（类似世界地图入场效果）
+	var zoom_tween = create_tween()
+	zoom_tween.set_ease(Tween.EASE_IN_OUT)
+	zoom_tween.set_trans(Tween.TRANS_SINE)
+	zoom_tween.tween_property(city_camera, "zoom", Vector2(0.45, 0.45), 1.2)
+	if city_camera.has_method("set_clamp_enabled"):
+		zoom_tween.tween_callback(Callable(city_camera, "set_clamp_enabled").bind(true))
 
 	# 初始化城市管理器
 	if not city_manager:

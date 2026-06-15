@@ -60,7 +60,7 @@ ROAD_L3 = {
 }
 
 def draw_gravel_road(draw, tile_x, tile_y):
-    """碎石子路 - 中间车道实心，边缘透明"""
+    """碎石子路 - 菱形内车道区域有颜色，菱形外和车道外透明"""
     img = draw._image
     pixels = img.load()
     
@@ -69,14 +69,18 @@ def draw_gravel_road(draw, tile_x, tile_y):
             px = tile_x + x
             py = tile_y + y
             
+            # 第一步：菱形遮罩 — 只有菱形内的像素可以绘制
+            if not is_in_diamond(x, y):
+                pixels[px, py] = (0, 0, 0, 0)
+                continue
+            
             # 归一化坐标
             rx = (x - CX) / CX
             ry = (y - CY) / CY
             
-            # 只绘制中间车道区域（宽度约70%）
+            # 第二步：车道宽度裁剪 — 车道外区域透明
             road_width = 0.70
             if abs(ry) > road_width:
-                # 路外区域保持透明
                 pixels[px, py] = (0, 0, 0, 0)
                 continue
             
@@ -103,7 +107,7 @@ def draw_gravel_road(draw, tile_x, tile_y):
             pixels[px, py] = c + (255,)
 
 def draw_concrete_road(draw, tile_x, tile_y):
-    """水泥路 - 中间车道实心，边缘透明"""
+    """水泥路 - 菱形内车道区域有颜色，菱形外和车道外透明"""
     img = draw._image
     pixels = img.load()
     
@@ -112,10 +116,15 @@ def draw_concrete_road(draw, tile_x, tile_y):
             px = tile_x + x
             py = tile_y + y
             
+            # 第一步：菱形遮罩
+            if not is_in_diamond(x, y):
+                pixels[px, py] = (0, 0, 0, 0)
+                continue
+            
             rx = (x - CX) / CX
             ry = (y - CY) / CY
             
-            # 只绘制中间车道
+            # 车道宽度裁剪
             if abs(ry) > 0.65:
                 pixels[px, py] = (0, 0, 0, 0)
                 continue
@@ -138,7 +147,7 @@ def draw_concrete_road(draw, tile_x, tile_y):
             pixels[px, py] = c + (255,)
 
 def draw_asphalt_road(draw, tile_x, tile_y):
-    """柏油路 - 中间车道实心，边缘透明"""
+    """柏油路 - 菱形内车道区域有颜色，菱形外和车道外透明"""
     img = draw._image
     pixels = img.load()
     
@@ -147,10 +156,15 @@ def draw_asphalt_road(draw, tile_x, tile_y):
             px = tile_x + x
             py = tile_y + y
             
+            # 第一步：菱形遮罩
+            if not is_in_diamond(x, y):
+                pixels[px, py] = (0, 0, 0, 0)
+                continue
+            
             rx = (x - CX) / CX
             ry = (y - CY) / CY
             
-            # 只绘制中间车道
+            # 车道宽度裁剪
             if abs(ry) > 0.60:
                 pixels[px, py] = (0, 0, 0, 0)
                 continue
@@ -193,13 +207,17 @@ def main():
     print("Generating road textures...")
     random.seed(42)
     
-    # L1: 碎石子路
+    # L1: 碎石子路 → iso_dirt.png (代码期望的文件名)
+    generate_road_sheet(ROAD_L1, os.path.join(base, "iso_dirt.png"), draw_gravel_road)
+    # 同时生成备用名
     generate_road_sheet(ROAD_L1, os.path.join(base, "road_gravel.png"), draw_gravel_road)
     
-    # L2: 水泥路  
+    # L2: 水泥路 → iso_asphalt.png (代码期望的文件名)
+    generate_road_sheet(ROAD_L2, os.path.join(base, "iso_asphalt.png"), draw_concrete_road)
     generate_road_sheet(ROAD_L2, os.path.join(base, "road_concrete.png"), draw_concrete_road)
     
-    # L3: 柏油路
+    # L3: 柏油路 → iso_highway.png (代码期望的文件名)
+    generate_road_sheet(ROAD_L3, os.path.join(base, "iso_highway.png"), draw_asphalt_road)
     generate_road_sheet(ROAD_L3, os.path.join(base, "road_asphalt.png"), draw_asphalt_road)
     
     print("\nAll road textures generated!")

@@ -14,28 +14,46 @@ var _road_container = null
 var _road_sprites = {}
 var _road_sheets = {}
 
+func _ready():
+	# 预加载道路纹理，确保随时可用
+	_preload_road_textures()
+
+func _preload_road_textures():
+	for rname in ["dirt", "asphalt", "highway"]:
+		var path = "res://assets/textures/roads/iso_%s.png" % rname
+		if ResourceLoader.exists(path):
+			var tex = load(path)
+			if tex:
+				_road_sheets[rname] = tex
+				print("[ISO_ROAD] Preloaded: ", path)
+			else:
+				print("[ISO_ROAD] WARN: load() returned null for: ", path)
+		else:
+			print("[ISO_ROAD] WARN: File not found: ", path)
+
 func setup(grid_map_node, _seed_val = 0):
 	_grid_map = grid_map_node
+	# 再次确保纹理已加载（_ready 可能比 setup 晚执行）
+	_preload_road_textures()
 
 func generate():
 	if _grid_map == null:
 		return
 	_clear_children()
+	# 重置道路相关变量（_clear_children 删除了 _road_container）
+	_road_container = null
+	_road_sprites.clear()
 	_create_terrain_tileset()
 	_fill_terrain()
-	_create_road_sprites()
+	_create_road_container()
 	init_overlays()
 
-func _create_road_sprites():
+func _create_road_container():
 	_road_container = Node2D.new()
 	_road_container.name = "RoadContainer"
 	_road_container.z_index = 1
 	add_child(_road_container)
-	
-	for rname in ["dirt", "asphalt", "highway"]:
-		var path = "res://assets/textures/roads/iso_%s.png" % rname
-		if ResourceLoader.exists(path):
-			_road_sheets[rname] = load(path)
+	print("[ISO_ROAD] Road container created")
 
 func _get_road_sheet_key(road_type):
 	match road_type:
@@ -46,11 +64,15 @@ func _get_road_sheet_key(road_type):
 
 func update_road(gx, gy, road_type):
 	if _road_container == null:
-		return
+		print("[ISO_ROAD] WARN: _road_container is null, creating...")
+		_create_road_container()
+		if _road_container == null:
+			return
 	
-	# 尝试加载纹理（懒加载方式）
+	# 尝试加载纹理
 	var sheet = _get_or_load_sheet(road_type)
 	if sheet == null:
+		print("[ISO_ROAD] WARN: sheet null for type ", road_type, ", using fallback")
 		_create_fallback_road(gx, gy, road_type)
 		return
 	
@@ -67,8 +89,19 @@ func update_road(gx, gy, road_type):
 		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		_road_container.add_child(sprite)
 		_road_sprites[sprite_key] = sprite
+		print("[ISO_ROAD] Created sprite at ", gx, ",", gy)
+	elif not is_instance_valid(sprite) or sprite.get_parent() == null:
+		# 精灵无效或已被移除，重新创建
+		_road_sprites.erase(sprite_key)
+		sprite = Sprite2D.new()
+		sprite.name = "Road_" + sprite_key
+		sprite.centered = true
+		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		_road_container.add_child(sprite)
+		_road_sprites[sprite_key] = sprite
+		print("[ISO_ROAD] Recreated sprite at ", gx, ",", gy)
 	
-	# 使用 Sprite2D region_rect 裁剪子图块（最可靠的方案）
+	# 使用 Sprite2D region_rect 裁剪子图块
 	sprite.texture = sheet
 	sprite.region_enabled = true
 	sprite.region_rect = Rect2(atlas_x, atlas_y, TILE_W, TILE_H)
@@ -85,11 +118,19 @@ func _get_or_load_sheet(road_type):
 		var tex = load(path)
 		if tex:
 			_road_sheets[key] = tex
+			print("[ISO_ROAD] Lazy-loaded texture: ", path)
 			return tex
+		else:
+			print("[ISO_ROAD] FAILED: load() returned null for: ", path)
+	else:
+		print("[ISO_ROAD] FAILED: File not found: ", path)
 	return null
 
 func _create_fallback_road(gx, gy, road_type):
-	# 备选方案：程序生成彩色菱形
+	# 备选方案：程序生成彩色菱形（边缘透明）
+	if _road_container == null:
+		_create_road_container()
+	
 	var sprite_key = str(gx) + "_" + str(gy)
 	var sprite = _road_sprites.get(sprite_key)
 	if sprite == null:
@@ -100,41 +141,53 @@ func _create_fallback_road(gx, gy, road_type):
 		_road_container.add_child(sprite)
 		_road_sprites[sprite_key] = sprite
 	
-	# 生成彩色菱形纹理
+	# 生成彩色菱形纹理（车道区域实心，边缘透明）
 	var colors = [Color(0.8, 0.6, 0.2, 0.9), Color(0.3, 0.3, 0.3, 0.9), Color(0.15, 0.15, 0.15, 0.9)]
 	var col = colors[road_type % 3]
 	var img = Image.create(TILE_W, TILE_H, false, Image.FORMAT_RGBA8)
+	var cx_f = TILE_W / 2.0
+	var cy_f = TILE_H / 2.0
 	for y in range(TILE_H):
 		for x in range(TILE_W):
-			var cx = TILE_W / 2
-			var cy = TILE_H / 2
-			var dx = abs(x - cx) / float(cx)
-			var dy = abs(y - cy) / float(cy)
+			var dx = abs(x - cx_f) / cx_f
+			var dy = abs(y - cy_f) / cy_f
 			if dx + dy <= 1.0:
-				img.set_pixel(x, y, col)
+				# 车道区域（只占 ~65% 宽度）
+				if abs(dy) <= 0.65:
+					img.set_pixel(x, y, col)
+				else:
+					img.set_pixel(x, y, Color(0, 0, 0, 0))
 			else:
 				img.set_pixel(x, y, Color(0, 0, 0, 0))
-	sprite.texture = ImageTexture.create_from_image(img)
+	var tex = ImageTexture.create_from_image(img)
+	if tex:
+		sprite.texture = tex
 	sprite.position = grid_to_world(gx, gy)
 
 func clear_road(gx, gy):
 	var sprite_key = str(gx) + "_" + str(gy)
 	var sprite = _road_sprites.get(sprite_key)
-	if sprite != null:
+	if sprite != null and is_instance_valid(sprite):
+		if _road_container != null and sprite.get_parent() != null:
+			sprite.get_parent().remove_child(sprite)
 		sprite.queue_free()
 		_road_sprites.erase(sprite_key)
 
 func clear_all_roads():
+	# 使用 remove_child + queue_free 避免延迟删除导致的问题
 	for key in _road_sprites.keys():
 		var sp = _road_sprites[key]
-		if sp != null:
+		if sp != null and is_instance_valid(sp):
+			if sp.get_parent() != null:
+				sp.get_parent().remove_child(sp)
 			sp.queue_free()
 	_road_sprites.clear()
 
 func _get_road_coords(cx, cy):
+	var road_type = _grid_map.TerrainType.ROAD if _grid_map else 1
 	var is_road = func(x, y):
 		var c = _grid_map.get_cell(x, y) if _grid_map else null
-		return c and c.terrain == 1
+		return c and c.terrain == road_type
 	var u = cy > 0 and is_road.call(cx, cy-1)
 	var d = cy < MAP_HEIGHT-1 and is_road.call(cx, cy+1)
 	var l = cx > 0 and is_road.call(cx-1, cy)
@@ -145,7 +198,10 @@ func _get_road_coords(cx, cy):
 	else: return Vector2i(1, 1)
 
 func _clear_children():
+	# 必须先 remove_child 再 queue_free，否则同一帧创建的新子节点与待删除节点重叠
 	for c in get_children():
+		if c.get_parent():
+			c.get_parent().remove_child(c)
 		c.queue_free()
 
 func _create_terrain_tileset():

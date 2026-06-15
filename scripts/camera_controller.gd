@@ -120,7 +120,8 @@ func _process(delta):
 		if _velocity.length_squared() < 0.5:
 			_velocity = Vector2.ZERO
 
-	_clamp_position()
+	if _clamp_enabled:
+		_clamp_position()
 
 func _clamp_position():
 	var viewport_size = get_viewport_rect().size
@@ -154,3 +155,8 @@ func set_tool_active(active: bool):
 		_dragging = false
 		_is_panning = false
 		_velocity = Vector2.ZERO
+
+## 启用/禁用位置钳制（入场动画期间禁用）
+var _clamp_enabled := true
+func set_clamp_enabled(enabled: bool):
+	_clamp_enabled = enabled

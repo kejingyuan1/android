@@ -120,6 +120,9 @@ func _ready():
 	# 初始渲染
 	_full_render()
 
+	# 在全局 GameObject _ready 后放置大本营
+	call_deferred("_place_town_hall")
+
 func _generate_terrain():
 	var terrain_gen = preload("res://scripts/terrain_generator.gd").new()
 	add_child(terrain_gen)
@@ -526,6 +529,8 @@ func _handle_tool_input(event, cell_pos: Vector2i):
 
 func _handle_road_input(event, cell_pos: Vector2i, road_type: int = 0):
 	if _is_press_event(event):
+		if _is_dragging:
+			return  # 防止同一事件重复触发两次 PRESS
 		print("[ROAD] PRESS @", cell_pos, " type=", road_type)
 		road_system.start_draw(cell_pos, road_type)
 		_update_cell_visual(cell_pos.x, cell_pos.y)
@@ -1375,6 +1380,124 @@ func _rebuild_buildings():
 func _on_road_changed():
 	pass
 
+# ============ 大本营系统 ============
+
+# 大本营网格位置
+const TOWN_HALL_GX := 110
+const TOWN_HALL_GY := 75
+
+## 放置大本营（在初始化完成后调用）
+func _place_town_hall():
+	if not grid_map or not iso_renderer:
+		return
+	
+	# 读取出兵营对应的文明ID
+	var global_game = get_node("/root/Main/GlobalGame")
+	var civ_id = global_game.current_civ_id if global_game else 0
+	var civ_names = ["chinese", "roman", "british", "egyptian", "japanese", "viking"]
+	civ_id = clampi(civ_id, 0, 5)
+	var civ_name = civ_names[civ_id]
+	
+	# 设置大本营数据
+	var cell = grid_map.get_cell(TOWN_HALL_GX, TOWN_HALL_GY)
+	if not cell:
+		return
+	cell.has_building = true
+	cell.building_level = 1
+	cell.building_size_x = 2
+	cell.building_size_y = 2
+	cell.building_variant_id = 9999  # 大本营保留ID
+	
+	# 清除大本营周围 3×3 区域内已有道路（给大本营留空间）
+	for dx in range(-1, 2):
+		for dy in range(-1, 2):
+			var nx = TOWN_HALL_GX + dx
+			var ny = TOWN_HALL_GY + dy
+			var nc = grid_map.get_cell(nx, ny)
+			if nc and nc.terrain == grid_map.TerrainType.ROAD:
+				nc.terrain = grid_map.TerrainType.GRASS
+				if iso_renderer and iso_renderer.has_method("clear_road"):
+					iso_renderer.clear_road(nx, ny)
+	
+	# 加载大本营纹理
+	var tex_path = "res://assets/textures/buildings/town_hall_%s_l1.png" % civ_name
+	var texture = null
+	if ResourceLoader.exists(tex_path):
+		texture = load(tex_path)
+	
+	if not texture:
+		print("[WARN] 大本营纹理不存在: ", tex_path, "，使用默认建筑纹理")
+		var fallback_path = "res://assets/textures/buildings/house1.png"
+		if ResourceLoader.exists(fallback_path):
+			texture = load(fallback_path)
+	
+	if not texture:
+		print("[WARN] 默认建筑纹理也不存在")
+		return
+	
+	# 创建精灵
+	var sprite = Sprite2D.new()
+	sprite.name = "TownHall"
+	sprite.texture = texture
+	sprite.centered = true
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	
+	# 等距坐标定位
+	if iso_renderer and iso_renderer.has_method("grid_to_world"):
+		var iso_pos = iso_renderer.grid_to_world(TOWN_HALL_GX, TOWN_HALL_GY)
+		sprite.position = iso_pos
+		# 添加阴影
+		if iso_renderer.has_method("create_shadow_sprite"):
+			var shadow = iso_renderer.create_shadow_sprite()
+			shadow.position = iso_pos
+			building_container.add_child(shadow)
+	
+	sprite.z_index = 10 + TOWN_HALL_GY * 0.01
+	sprite.scale = Vector2(0.35, 0.35)  # 大本营比普通建筑稍大
+	
+	building_container.add_child(sprite)
+	cell.building_ref = sprite
+	
+	# 通知 GlobalGame 更新大本营位置（供摄像机居中）
+	var th_world_pos = iso_renderer.grid_to_world(TOWN_HALL_GX, TOWN_HALL_GY)
+	if global_game:
+		global_game.town_hall_world_pos = th_world_pos
+	
+	print("[TOWN_HALL] 大本营已放置: ", civ_name, " L1 @ (", TOWN_HALL_GX, ", ", TOWN_HALL_GY, ") 世界坐标=", th_world_pos)
+
+## 升级大本营
+func upgrade_town_hall():
+	var cell = grid_map.get_cell(TOWN_HALL_GX, TOWN_HALL_GY)
+	if not cell or not cell.has_building or not cell.building_ref:
+		return
+	
+	var current_level = cell.building_level
+	if current_level >= 10:
+		_show_toast("🏆 大本营已满级！")
+		return
+	
+	# 获取文明名称
+	var global_game = get_node("/root/Main/GlobalGame")
+	var civ_names = ["chinese", "roman", "british", "egyptian", "japanese", "viking"]
+	var civ_id = clampi(global_game.current_civ_id if global_game else 0, 0, 5)
+	var civ_name = civ_names[civ_id]
+	
+	var new_level = current_level + 1
+	var new_tex_path = "res://assets/textures/buildings/town_hall_%s_l%d.png" % [civ_name, new_level]
+	
+	if ResourceLoader.exists(new_tex_path):
+		var new_tex = load(new_tex_path)
+		if new_tex and is_instance_valid(cell.building_ref):
+			cell.building_ref.texture = new_tex
+			cell.building_level = new_level
+			# 逐级增大比例
+			cell.building_ref.scale = Vector2(0.35 + (new_level - 1) * 0.025, 0.35 + (new_level - 1) * 0.025)
+			_show_toast("⬆️ 大本营升级到 Lv." + str(new_level))
+			print("[TOWN_HALL] 升级到 L", new_level)
+	else:
+		_show_toast("⚠️ 大本营升级纹理缺失: " + new_tex_path)
+		print("[TOWN_HALL] WARN: ", new_tex_path, " 不存在")
+
 func _on_buildings_updated():
 	pass
 
@@ -1444,6 +1567,8 @@ func _unhandled_input(event):
 		match event.keycode:
 			KEY_F2:
 				_start_wave_battle()
+			KEY_U:
+				upgrade_town_hall()
 
 func _start_wave_battle():
 	if not iso_renderer:
