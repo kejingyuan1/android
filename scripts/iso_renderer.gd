@@ -24,51 +24,77 @@ func generate():
 	_create_road_tileset()
 	init_overlays()
 
-# --- Phase 3: 等距道路 ---
-var _road: TileMap = null
-var _road_types := {"dirt": 0, "asphalt": 1, "highway": 2}
+# --- Phase 3: 等距道路（Sprite2D 方式，更可靠的渲染） ---
+var _road_container: Node2D = null
+var _road_sprites: Dictionary = {}  # key="gx_gy" → Sprite2D
+var _road_sheets: Dictionary = {}   # road_type → Texture2D (128x64 spritesheet)
 
 func _create_road_tileset():
-	var tileset = TileSet.new()
-	tileset.tile_shape = TileSet.TILE_SHAPE_ISOMETRIC
-	tileset.tile_size = Vector2i(TILE_W, TILE_H)
-	tileset.tile_layout = TileSet.TILE_LAYOUT_STACKED
-	tileset.tile_offset_axis = TileSet.TILE_OFFSET_AXIS_HORIZONTAL
-
+	_road_container = Node2D.new()
+	_road_container.name = "RoadContainer"
+	_road_container.z_index = 1
+	add_child(_road_container)
+	
+	# 预加载纹理
 	for rname in ["dirt", "asphalt", "highway"]:
 		var path = "res://assets/textures/roads/iso_%s.png" % rname
-		if not ResourceLoader.exists(path):
-			continue
-		var tex = load(path)
-		var src = TileSetAtlasSource.new()
-		src.texture = tex
-		src.texture_region_size = Vector2i(TILE_W, TILE_H)
-		# 4 sub-tiles: h(0,0), v(1,0), cross(0,1), plain(1,1)
-		for idx in range(4):
-			var ax = idx % 2
-			var ay = idx / 2
-			src.create_tile(Vector2i(ax, ay))
-		tileset.add_source(src)
+		if ResourceLoader.exists(path):
+			_road_sheets[rname] = load(path)
 
-	_road = TileMap.new()
-	_road.tile_set = tileset
-	_road.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_road.z_index = 1
-	add_child(_road)
+func _get_road_sheet_key(road_type: int) -> String:
+	match road_type:
+		0: return "dirt"
+		1: return "asphalt"
+		2: return "highway"
+	_: return "dirt"
 
 func update_road(gx: int, gy: int, road_type: int):
-	if not _road:
+	if not _road_container:
 		return
+	if _road_sheets.size() == 0:
+		return
+	
+	var key = _get_road_sheet_key(road_type)
+	var sheet: Texture2D = _road_sheets.get(key)
+	if not sheet:
+		return
+	
+	# 获取当前格的道路图块坐标
 	var coords = _get_road_coords(gx, gy)
-	_road.set_cell(0, Vector2i(gx, gy), road_type, coords)
+	# 从 spritesheet 中裁剪出对应的子图块
+	var atlas_x = coords.x * TILE_W
+	var atlas_y = coords.y * TILE_H
+	
+	var sprite_key = "%d_%d" % [gx, gy]
+	var sprite: Sprite2D = _road_sprites.get(sprite_key)
+	if not sprite:
+		sprite = Sprite2D.new()
+		sprite.name = "Road_%s" % sprite_key
+		sprite.centered = true
+		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		_road_container.add_child(sprite)
+		_road_sprites[sprite_key] = sprite
+	
+	# 从大图中提取子图块作为纹理
+	var atlas_tex = AtlasTexture.new()
+	atlas_tex.atlas = sheet
+	atlas_tex.region = Rect2(atlas_x, atlas_y, TILE_W, TILE_H)
+	sprite.texture = atlas_tex
+	sprite.position = grid_to_world(gx, gy)
 
 func clear_road(gx: int, gy: int):
-	if _road:
-		_road.set_cell(0, Vector2i(gx, gy))
+	var sprite_key = "%d_%d" % [gx, gy]
+	var sprite = _road_sprites.get(sprite_key)
+	if sprite:
+		sprite.queue_free()
+		_road_sprites.erase(sprite_key)
 
 func clear_all_roads():
-	if _road:
-		_road.clear()
+	for key in _road_sprites.keys():
+		var sp = _road_sprites[key]
+		if sp:
+			sp.queue_free()
+	_road_sprites.clear()
 
 func _get_road_coords(cx: int, cy: int) -> Vector2i:
 	var is_road = func(x, y):
