@@ -405,13 +405,15 @@ func _handle_game_input(event):
 
 	# 工具模式
 	if _current_tool >= 0 or _current_variant >= 0:
+		if _is_press_event(event):
+			print("[ROAD_DEBUG] Tool active! _current_variant=", _current_variant, " _current_tool=", _current_tool, " cell=", cell_pos)
 		_handle_tool_input(event, cell_pos)
 		# mouse motion 时更新虚影位置
 		if event is InputEventMouseMotion and _current_variant >= 0:
 			_update_ghost_position(cell_pos)
-	else:
-		if _is_press_event(event):
-			_handle_normal_tap(cell_pos)
+	elif _is_press_event(event):
+		print("[ROAD_DEBUG] No tool active: _current_variant=", _current_variant, " _current_tool=", _current_tool)
+		_handle_normal_tap(cell_pos)
 		# 清除虚影
 		if _ghost_sprite and _current_variant < 0:
 			_remove_ghost()
@@ -438,6 +440,7 @@ func _get_world_position(event) -> Vector2:
 func _handle_tool_input(event, cell_pos: Vector2i):
 	# 优先使用 _current_variant（新建筑系统），回退到 _current_tool（旧道路/分区系统）
 	var v = _current_variant if _current_variant >= 0 else _current_tool
+	print("[ROAD_DEBUG] _handle_tool_input v=", v, " _current_variant=", _current_variant, " _current_tool=", _current_tool)
 	match v:
 		0, 1, 2:  # Road variants
 			_handle_road_input(event, cell_pos, v)
