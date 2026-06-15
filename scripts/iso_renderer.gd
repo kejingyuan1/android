@@ -38,7 +38,9 @@ func setup(grid_map_node, _seed_val = 0):
 
 func generate():
 	if _grid_map == null:
+		print("[TERRAIN] generate() aborted: _grid_map is null")
 		return
+	print("[TERRAIN] generate() started")
 	_clear_children()
 	# 重置道路相关变量（_clear_children 删除了 _road_container）
 	_road_container = null
@@ -47,6 +49,7 @@ func generate():
 	_fill_terrain()
 	_create_road_container()
 	init_overlays()
+	print("[TERRAIN] generate() completed")
 
 func _create_road_container():
 	_road_container = Node2D.new()
@@ -213,28 +216,38 @@ func _create_terrain_tileset():
 		"water_0", "water_1", "water_2",
 		"sand", "forest", "mountain", "dirt"
 	]
+	var loaded_count := 0
 	for name in tile_names:
 		var path = "res://assets/textures/isometric/%s.png" % name
 		if not ResourceLoader.exists(path):
+			print("[TERRAIN] WARN: missing texture: ", path)
 			continue
 		var tex = load(path)
+		if tex == null:
+			print("[TERRAIN] WARN: load failed: ", path)
+			continue
 		var src = TileSetAtlasSource.new()
 		src.texture = tex
 		src.texture_region_size = Vector2i(TILE_W, TILE_H)
 		src.create_tile(Vector2i(0, 0))
 		tileset.add_source(src)
+		loaded_count += 1
+	print("[TERRAIN] Loaded ", loaded_count, "/", tile_names.size(), " textures")
 
 	_terrain = TileMap.new()
 	_terrain.tile_set = tileset
 	_terrain.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	add_child(_terrain)
+	print("[TERRAIN] TileMap added, sources=", tileset.get_source_count())
 
 func _fill_terrain():
 	if _terrain == null:
+		print("[TERRAIN] WARN: _terrain is null, skipping fill")
 		return
 	var map = {0:["water_0","water_1","water_2"], 1:["sand"], 2:["grass_0","grass_1","grass_2"],
 		3:["forest"], 4:["mountain"], 5:["mountain"]}
 	var ts = _terrain.tile_set
+	var cells_set := 0
 	for gy in range(MAP_HEIGHT):
 		for gx in range(MAP_WIDTH):
 			var nt = _grid_map.get_natural_terrain(gx, gy)
@@ -243,9 +256,12 @@ func _fill_terrain():
 			var sid = _find_source(chosen)
 			if sid >= 0:
 				_terrain.set_cell(0, Vector2i(gx, gy), sid, Vector2i(0,0))
+				cells_set += 1
 			else:
 				if ts and ts.get_source_count() > 0:
 					_terrain.set_cell(0, Vector2i(gx, gy), 0, Vector2i(0,0))
+					cells_set += 1
+	print("[TERRAIN] Filled ", cells_set, "/", MAP_WIDTH * MAP_HEIGHT, " cells")
 
 func _find_source(name):
 	if _terrain == null: return -1
