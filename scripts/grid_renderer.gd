@@ -5,12 +5,12 @@ extends Node2D
 const MAP_WIDTH := 240
 const MAP_HEIGHT := 160
 const CELL_SIZE := 32
-# 纹理每格像素数（降低以加速生成；用 LINEAR 过滤平滑放大）
-const PIXELS_PER_CELL := 16
-const TEX_W := MAP_WIDTH * PIXELS_PER_CELL    # 3840
-const TEX_H := MAP_HEIGHT * PIXELS_PER_CELL   # 2560
+# 纹理每格像素数（提升分辨率使地形更精细平滑）
+const PIXELS_PER_CELL := 24
+const TEX_W := MAP_WIDTH * PIXELS_PER_CELL    # 5760
+const TEX_H := MAP_HEIGHT * PIXELS_PER_CELL   # 3840
 # 精灵缩放（填补与真实世界尺寸的差距）
-const SPRITE_SCALE := float(CELL_SIZE) / float(PIXELS_PER_CELL)  # 2.0
+const SPRITE_SCALE := float(CELL_SIZE) / float(PIXELS_PER_CELL)  # 1.33
 
 var _grid_map: Node = null
 var _sprite: Sprite2D = null
@@ -53,16 +53,31 @@ func generate() -> ImageTexture:
 
 	for py in range(TEX_H):
 		for px in range(TEX_W):
-			var gx = px / PIXELS_PER_CELL
-			var gy = py / PIXELS_PER_CELL
-			if gx >= MAP_WIDTH or gy >= MAP_HEIGHT:
-				image.set_pixel(px, py, Color(0.35, 0.6, 0.2))
-				continue
+		var gx = px / PIXELS_PER_CELL
+		var gy = py / PIXELS_PER_CELL
+		if gx >= MAP_WIDTH or gy >= MAP_HEIGHT:
+			image.set_pixel(px, py, Color(0.35, 0.6, 0.2))
+			continue
+
+		# 格内偏移（0~1），用于双线性插值
+		var ppx = (px % PIXELS_PER_CELL) / float(PIXELS_PER_CELL)
+		var ppy = (py % PIXELS_PER_CELL) / float(PIXELS_PER_CELL)
 
 			var base = terrain_colors[gy][gx]
 
-			# 噪声：用纹理坐标（非格坐标）采样，产生像素级自然变化
-			var n = noise.get_noise_2d(px, py) * 0.25  # -0.25~0.25
+			# 双线性插值：在相邻 cell 之间平滑过渡，消除块状感
+			if ppx > 0.0 or ppy > 0.0:
+				var right = terrain_colors[gy][min(gx+1, MAP_WIDTH-1)]
+				var down = terrain_colors[min(gy+1, MAP_HEIGHT-1)][gx]
+				var down_right = terrain_colors[min(gy+1, MAP_HEIGHT-1)][min(gx+1, MAP_WIDTH-1)]
+				base = Color(
+					lerp(lerp(base.r, right.r, ppx), lerp(down.r, down_right.r, ppx), ppy),
+					lerp(lerp(base.g, right.g, ppx), lerp(down.g, down_right.g, ppx), ppy),
+					lerp(lerp(base.b, right.b, ppx), lerp(down.b, down_right.b, ppx), ppy)
+				)
+
+			# 噪声：产生自然纹理细节
+			var n = noise.get_noise_2d(px, py) * 0.12  # -0.12~0.12
 			var color = Color(
 				clamp(base.r + n, 0, 1),
 				clamp(base.g + n, 0, 1),
