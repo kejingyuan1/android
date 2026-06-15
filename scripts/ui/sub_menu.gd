@@ -129,7 +129,7 @@ func _create_road_texture(road_type: String) -> Texture2D:
 		var img = load(png_path).get_image()
 		if img:
 			var tile = Image.create(32, 32, false, Image.FORMAT_RGBA8)
-			tile.blit_rect(img, Rect2i(0, 0, 32, 32), 0, 0)
+			tile.blit_rect(img, Rect2i(0, 0, 32, 32), Vector2i(0, 0))
 			tile.resize(size, size, Image.INTERPOLATE_NEAREST)
 			return ImageTexture.create_from_image(tile)
 

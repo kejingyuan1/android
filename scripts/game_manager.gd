@@ -408,6 +408,9 @@ func _handle_tool_input(event, cell_pos: Vector2i):
 	match v:
 		0, 1, 2:  # Road variants
 			_handle_road_input(event, cell_pos, v)
+			# 更新邻居格子的道路图块（连接性变化）
+			if event is InputEventMouseButton:
+				_update_road_neighbors(cell_pos)
 		10, 11:  # Residential (low/high density, same zone type)
 			_handle_zone_input(event, cell_pos, 2)
 		20:  # Commercial
@@ -774,6 +777,17 @@ func _calculate_rci_demand():
 
 func _update_visuals():
 	_full_render()
+
+## 更新指定格子周围四格的���路显示
+func _update_road_neighbors(pos: Vector2i):
+	var dirs = [Vector2i(-1,0), Vector2i(1,0), Vector2i(0,-1), Vector2i(0,1)]
+	for d in dirs:
+		var nx = pos.x + d.x
+		var ny = pos.y + d.y
+		if nx >= 0 and nx < GRID_WIDTH and ny >= 0 and ny < GRID_HEIGHT:
+			var cell = grid_map.get_cell(nx, ny)
+			if cell and cell.terrain == grid_map.TerrainType.ROAD:
+				_update_cell_visual(nx, ny)
 
 ## 根据邻居计算道路图块坐标 (0,0)=水平 (1,0)=垂直 (0,1)=十字 (1,1)=孤岛
 func _get_road_tile_coords(cx: int, cy: int) -> Vector2i:
