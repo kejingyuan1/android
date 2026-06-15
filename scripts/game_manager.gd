@@ -1411,3 +1411,31 @@ func _spawn_test_enemy(target_world_pos):
 		else:
 			get_parent().add_child(enemy)
 	_show_toast("调试敌人 × 3 已生成")
+
+## 按键处理（F2 启动波次战斗）
+func _unhandled_input(event):
+	if event is InputEventKey and event.pressed and not event.echo:
+		match event.keycode:
+			KEY_F2:
+				_start_wave_battle()
+
+func _start_wave_battle():
+	if not iso_renderer:
+		return
+	var game_world = get_parent().get_node("GameWorld")
+	if not game_world:
+		return
+	# 在城市中心生成
+	var center = iso_renderer.grid_to_world(120, 80)
+	var spawner = preload("res://scripts/combat/battle_spawner.gd").new()
+	spawner.start_battle(center, game_world, iso_renderer)
+	add_child(spawner)
+	spawner.connect("battle_completed", Callable(self, "_on_battle_completed"))
+	spawner.connect("wave_started", Callable(self, "_on_wave_started"))
+	_show_toast("⚔️ 战斗开始！按F2启动波次")
+
+func _on_battle_completed(won, killed, total):
+	_show_toast("🏆 战斗结束！消灭 " + str(killed) + "/" + str(total) + " 敌人")
+
+func _on_wave_started(wave_num):
+	_show_toast("🌊 第 " + str(wave_num) + " 波敌人来袭！")
