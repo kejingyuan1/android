@@ -214,7 +214,7 @@ func _create_upgrade_progress(cell):
 	progress.setup(ref_node, cell.x, cell.y)
 	progress.position = ref_node.position
 	_building_container.add_child(progress)
-	progress.show()
+	progress.show_progress()
 
 func get_residential_population() -> int:
 	var total = 0

@@ -31,7 +31,7 @@ func _ready():
 
 func show_building_info(cell):
     if not cell or not cell.has_building:
-        hide()
+        hide_panel()
         return
     _panel.visible = true
     _name_label.text = "建筑信息"
@@ -51,6 +51,6 @@ func show_building_info(cell):
             info_text += "\n[点击收集]"
     _info_label.text = info_text
 
-func hide():
+func hide_panel():
     if _panel:
         _panel.visible = false

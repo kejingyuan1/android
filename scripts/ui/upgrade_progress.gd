@@ -5,7 +5,6 @@ var _bar = null
 var _building_ref = null
 var _building_cx = 0
 var _building_cy = 0
-var _visible = false
 
 func setup(building, cx, cy):
 	_building_ref = building
@@ -26,10 +25,10 @@ func setup(building, cx, cy):
 	move_child(bg, 0)  # 背景放下面
 	visible = false
 
-func show():
+func show_progress():
 	visible = true
 
-func hide():
+func hide_progress():
 	visible = false
 
 func update_progress(pct):
