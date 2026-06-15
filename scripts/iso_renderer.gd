@@ -198,10 +198,7 @@ func _get_road_coords(cx, cy):
 	else: return Vector2i(1, 1)
 
 func _clear_children():
-	# 必须先 remove_child 再 queue_free，否则同一帧创建的新子节点与待删除节点重叠
 	for c in get_children():
-		if c.get_parent():
-			c.get_parent().remove_child(c)
 		c.queue_free()
 
 func _create_terrain_tileset():

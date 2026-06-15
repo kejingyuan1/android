@@ -184,6 +184,22 @@ def add_level_upgrades(img, level):
     canvas = canvas.crop(canvas.getbbox() or (0, 0, canvas.width, canvas.height))
     return canvas
 
+def remove_watermark(img):
+    """去除右下角'AI生成'水印 — 将亮白色水印像素设为透明"""
+    if img.mode != 'RGBA':
+        img = img.convert('RGBA')
+    pixels = img.load()
+    w, h = img.size
+    # 水印通常在右下角 200x60 范围，为近白色像素
+    removed = 0
+    for y in range(max(0, h - 60), h):
+        for x in range(max(0, w - 200), w):
+            r, g, b, a = pixels[x, y]
+            if a > 10 and r > 180 and g > 180 and b > 180:
+                pixels[x, y] = (0, 0, 0, 0)
+                removed += 1
+    return img, removed
+
 def main():
     print("=" * 60)
     print("生成大本营纹理：10级 × 6文明")
@@ -212,10 +228,21 @@ def main():
             else:
                 img = add_level_upgrades(civ_base, level)
             
+            # 后处理：强制清除右下角水印区域
+            cleared = 0
+            w, h = img.size
+            pixels = img.load()
+            for y in range(max(0, h - 60), h):
+                for x in range(max(0, w - 200), w):
+                    if pixels[x, y][3] > 10:
+                        pixels[x, y] = (0, 0, 0, 0)
+                        cleared += 1
+            
             filename = f"town_hall_{civ}_l{level}.png"
             out_path = os.path.join(out_dir, filename)
             img.save(out_path)
-            print(f"  L{level}: {filename} -> {img.size}")
+            detail = f" (清{cleared}px)" if cleared > 0 else ""
+            print(f"  L{level}: {filename} -> {img.size}{detail}")
 
 if __name__ == "__main__":
     main()
