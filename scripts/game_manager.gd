@@ -1455,11 +1455,6 @@ func _place_town_hall():
 				nc.terrain = grid_map.TerrainType.GRASS
 				if iso_renderer and iso_renderer.has_method("clear_road"):
 					iso_renderer.clear_road(nx, ny)
-			var nc = grid_map.get_cell(nx, ny)
-			if nc and nc.terrain == grid_map.TerrainType.ROAD:
-				nc.terrain = grid_map.TerrainType.GRASS
-				if iso_renderer and iso_renderer.has_method("clear_road"):
-					iso_renderer.clear_road(nx, ny)
 	
 	# 加载大本营纹理
 	var tex_path = "res://assets/textures/buildings/town_hall_%s_l1.png" % civ_name
