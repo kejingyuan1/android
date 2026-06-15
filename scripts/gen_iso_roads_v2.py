@@ -60,14 +60,12 @@ ROAD_L3 = {
 }
 
 def draw_gravel_road(draw, tile_x, tile_y):
-    """碎石子路 - 土褐色+碎石点"""
+    """碎石子路 - 中间车道实心，边缘透明"""
     img = draw._image
     pixels = img.load()
     
     for y in range(TILE_H):
         for x in range(TILE_W):
-            if not is_in_diamond(x, y):
-                continue
             px = tile_x + x
             py = tile_y + y
             
@@ -75,96 +73,98 @@ def draw_gravel_road(draw, tile_x, tile_y):
             rx = (x - CX) / CX
             ry = (y - CY) / CY
             
-            # 路缘（上下边）
-            curb_h = 0.12
-            if abs(ry + 1) < curb_h or abs(ry - 1) < curb_h:
+            # 只绘制中间车道区域（宽度约70%）
+            road_width = 0.70
+            if abs(ry) > road_width:
+                # 路外区域保持透明
+                pixels[px, py] = (0, 0, 0, 0)
+                continue
+            
+            # 路缘（车道边缘）
+            curb_w = 0.62
+            if abs(ry) > curb_w:
                 c = ROAD_L1["curb"]
-                if abs(ry + 1) < curb_h * 0.5:
-                    c = (min(c[0]+20,255), min(c[1]+20,255), min(c[2]+20,255))
                 pixels[px, py] = noise_color(c, 8) + (255,)
                 continue
             
             # 路面底色
             base = ROAD_L1["surface"]
             # 添加碎石点
-            if random.random() < 0.08:
+            if random.random() < 0.06:
                 base = (min(base[0]+30,255), min(base[1]+25,255), min(base[2]+20,255))
-            c = noise_color(base, 12)
+            c = noise_color(base, 10)
             
-            # 中心虚线（水平道路）
-            dash_spacing = 12
-            if int(x * 0.5 + y * 0.3) % dash_spacing < 4:
-                if abs(ry) < 0.08:
+            # 中心虚线
+            dash_spacing = 14
+            if int(x * 0.5 + y * 0.3) % dash_spacing < 5:
+                if abs(ry) < 0.06:
                     c = ROAD_L1["line"]
             
             pixels[px, py] = c + (255,)
 
 def draw_concrete_road(draw, tile_x, tile_y):
-    """水泥路 - 灰色+噪点+黄实线"""
+    """水泥路 - 中间车道实心，边缘透明"""
     img = draw._image
     pixels = img.load()
     
     for y in range(TILE_H):
         for x in range(TILE_W):
-            if not is_in_diamond(x, y):
-                continue
             px = tile_x + x
             py = tile_y + y
             
             rx = (x - CX) / CX
             ry = (y - CY) / CY
             
+            # 只绘制中间车道
+            if abs(ry) > 0.65:
+                pixels[px, py] = (0, 0, 0, 0)
+                continue
+            
             # 路缘
-            curb_h = 0.10
-            if abs(ry + 1) < curb_h or abs(ry - 1) < curb_h:
+            if abs(ry) > 0.58:
                 c = ROAD_L2["curb"]
                 pixels[px, py] = noise_color(c, 5) + (255,)
                 continue
             
-            # 混凝土纹理（噪点）
+            # 混凝土纹理
             base = ROAD_L2["surface"]
             n = random.randint(-10, 10)
             c = (max(0, min(255, base[0]+n)), max(0, min(255, base[1]+n)), max(0, min(255, base[2]+n)))
             
             # 中心黄实线
-            if abs(ry) < 0.06:
+            if abs(ry) < 0.05:
                 c = ROAD_L2["line"]
             
             pixels[px, py] = c + (255,)
 
 def draw_asphalt_road(draw, tile_x, tile_y):
-    """柏油路 - 深黑+颗粒+双黄线+白边线"""
+    """柏油路 - 中间车道实心，边缘透明"""
     img = draw._image
     pixels = img.load()
     
     for y in range(TILE_H):
         for x in range(TILE_W):
-            if not is_in_diamond(x, y):
-                continue
             px = tile_x + x
             py = tile_y + y
             
             rx = (x - CX) / CX
             ry = (y - CY) / CY
             
-            # 白色边线（车道边缘）
-            edge_pos = 0.65
-            edge_w = 0.04
+            # 只绘制中间车道
+            if abs(ry) > 0.60:
+                pixels[px, py] = (0, 0, 0, 0)
+                continue
+            
+            # 白色边线（车道边缘虚线）
+            edge_pos = 0.55
+            edge_w = 0.03
             if abs(abs(ry) - edge_pos) < edge_w:
-                if (int(x * 0.6) % 6) < 4:  # 虚线边线
+                if (int(x * 0.6) % 6) < 4:
                     pixels[px, py] = ROAD_L3["edge_line"] + (255,)
                     continue
             
-            # 路缘（最外层）
-            curb_h = 0.08
-            if abs(ry + 1) < curb_h or abs(ry - 1) < curb_h:
-                c = ROAD_L3["curb"]
-                pixels[px, py] = noise_color(c, 3) + (255,)
-                continue
-            
-            # 沥青底色 + 颗粒
+            # 沥青底色
             base = ROAD_L3["surface"]
-            # 沥青颗粒效果
             grain = random.randint(-5, 8)
             c = (max(0, min(80, base[0]+grain)), max(0, min(80, base[1]+grain)), max(0, min(85, base[2]+grain)))
             
