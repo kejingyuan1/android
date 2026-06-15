@@ -1,5 +1,5 @@
-# GridRenderer.gd — Perlin 噪声驱动的自然地形渲染（优化版）
-# 降低纹理分辨率 + 简化噪声采样以加速启动
+# GridRenderer.gd — 像素风自然地形渲染（细节彩绘版）
+# 使用彩色的地形基础色 + 亮点/阴影细节，使地图更丰富
 extends Node2D
 
 const MAP_WIDTH := 240
@@ -40,14 +40,19 @@ func generate() -> ImageTexture:
 			var nt = _grid_map.get_natural_terrain(gx, gy)
 			terrain_colors[gy].append(_get_base_color(nt))
 
-	# 单层 Perlin 噪声（使用种子确保确定性）
-	var noise = FastNoiseLite.new()
-	noise.noise_type = FastNoiseLite.TYPE_PERLIN
-	noise.frequency = 0.006
-	noise.fractal_type = FastNoiseLite.FRACTAL_FBM
-	noise.fractal_octaves = 3
-	noise.fractal_gain = 0.5
-	noise.seed = _seed if _seed != 0 else randi()
+	# 双层噪声：大尺度地形变化 + 小尺度纹理细节
+	var large_noise = FastNoiseLite.new()
+	large_noise.noise_type = FastNoiseLite.TYPE_PERLIN
+	large_noise.frequency = 0.006
+	large_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
+	large_noise.fractal_octaves = 3
+	large_noise.fractal_gain = 0.5
+	large_noise.seed = _seed if _seed != 0 else randi()
+
+	var detail_noise = FastNoiseLite.new()
+	detail_noise.noise_type = FastNoiseLite.TYPE_CELLULAR
+	detail_noise.frequency = 0.04
+	detail_noise.seed = (_seed + 1) if _seed != 0 else randi()
 
 	var image = Image.create(TEX_W, TEX_H, false, Image.FORMAT_RGBA8)
 
@@ -76,13 +81,23 @@ func generate() -> ImageTexture:
 					lerp(lerp(base.b, right.b, ppx), lerp(down.b, down_right.b, ppx), ppy)
 				)
 
-			# 噪声：产生自然纹理细节
-			var n = noise.get_noise_2d(px, py) * 0.12  # -0.12~0.12
+			# 噪声：大尺度地形明暗变化
+			var n = large_noise.get_noise_2d(px, py) * 0.10  # -0.10~0.10
+			# 细节噪声：小范围点缀（花朵、石块等）
+			var dn = detail_noise.get_noise_2d(px, py)
 			var color = Color(
 				clamp(base.r + n, 0, 1),
 				clamp(base.g + n, 0, 1),
 				clamp(base.b + n, 0, 1),
 				1.0)
+
+			# 草地添加小花点缀（蜂窝噪声高值处）
+			if terrain_colors[gy][gx].g > 0.3 and dn > 0.6:
+				var flower = sin(px * 3.14 + py * 2.71) * 0.5 + 0.5
+				if flower > 0.7:
+					color = Color(1.0, 0.85, 0.3, 1.0)  # 黄色小花
+				elif flower > 0.5:
+					color = Color(0.9, 0.3, 0.5, 1.0)   # 粉色小花
 
 			# 水域添加波形
 			if terrain_colors[gy][gx].b > 0.4:
@@ -106,10 +121,10 @@ func generate() -> ImageTexture:
 
 func _get_base_color(nt: int) -> Color:
 	match nt:
-		0:  return Color(0.15, 0.28, 0.55)  # WATER
-		1:  return Color(0.85, 0.78, 0.52)  # SAND
-		2:  return Color(0.40, 0.62, 0.22)  # GRASS
-		3:  return Color(0.22, 0.45, 0.12)  # FOREST
-		4:  return Color(0.52, 0.38, 0.22)  # HILL
-		5:  return Color(0.42, 0.38, 0.32)  # MOUNTAIN
-		_:  return Color(0.40, 0.62, 0.22)
+		0:  return Color(0.18, 0.38, 0.65)  # WATER - deep blue
+		1:  return Color(0.82, 0.74, 0.48)  # SAND - warm beige
+		2:  return Color(0.42, 0.68, 0.25)  # GRASS - lush green
+		3:  return Color(0.20, 0.50, 0.15)  # FOREST - dark green
+		4:  return Color(0.55, 0.40, 0.25)  # HILL - earthy brown
+		5:  return Color(0.45, 0.40, 0.35)  # MOUNTAIN - gray brown
+		_:  return Color(0.42, 0.68, 0.25)
