@@ -714,6 +714,7 @@ func _on_tool_selected(tool_type: int):
 
 ## 主菜单选中 → 弹出子菜单
 func _on_main_category_selected(category_id: int):
+	print("[ROAD_DEBUG] _on_main_category_selected(", category_id, ")")
 	if category_id < 0:
 		if sub_menu:
 			sub_menu.hide_menu()
@@ -740,6 +741,7 @@ func _on_main_category_selected(category_id: int):
 
 ## 子菜单变体选中 → 激活工具
 func _on_variant_selected(variant_id: int):
+	print("[ROAD_DEBUG] _on_variant_selected(", variant_id, ")")
 	_current_variant = variant_id
 	_tool_active = true
 
