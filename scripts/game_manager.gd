@@ -64,6 +64,10 @@ var _move_mode := false
 var _move_source_cell := Vector2i(-1, -1)
 var _move_source_variant := -1
 
+## 旋转模式
+var _rotation_mode := false
+var _rotation_angle := 0  # 0, 90, 180, 270
+
 ## 建筑类型 → 纹理信息映射（variant_id → {texture, label, cost}）
 const BUILDING_TEXTURES := {
 	# 基本民生
@@ -504,28 +508,21 @@ func _handle_tool_input(event, cell_pos: Vector2i):
 		# 兵营 (6000~6001)
 		6000, 6001:
 			_handle_building_placement(event, cell_pos, v)
-		200:  # Remove
-			_handle_remove_input(event, cell_pos)
-		201:  # Info
-			_handle_info_input(event, cell_pos)
-		202:  # Move (toggle 模式)
-			_toggle_move_mode()
-			if not _move_mode:
-				_current_variant = -1
-				_tool_active = false
-				_remove_ghost()
+		202:  # 旋转模式
+			if _is_press_event(event):
+				_try_rotate_building(cell_pos)
+		203:  # 拆除模式
+			if _is_press_event(event):
+				_try_demolish_building(cell_pos)
 
 func _handle_road_input(event, cell_pos: Vector2i, road_type: int = 0):
 	if _is_press_event(event):
-		print("[ROAD_DEBUG] PRESS road at (", cell_pos.x, ",", cell_pos.y, ") type=", road_type)
 		road_system.start_draw(cell_pos, road_type)
-		print("[ROAD_DEBUG] grid_map terrain=", grid_map.get_cell(cell_pos.x, cell_pos.y).terrain if grid_map.get_cell(cell_pos.x, cell_pos.y) else "null")
 		_update_cell_visual(cell_pos.x, cell_pos.y)
 		_is_dragging = true
 		var road_names = ["土路", "沥青路", "高速路"]
 		_show_toast("🛣️ 开始铺设 " + road_names[road_type] + " - 拖拽延伸，松手结束")
 	elif _is_release_event(event):
-		print("[ROAD_DEBUG] RELEASE _is_dragging=", _is_dragging)
 		if _is_dragging:
 			road_system.end_draw()
 			_is_dragging = false
@@ -768,6 +765,41 @@ func _remove_ghost():
 	if _ghost_sprite:
 		_ghost_sprite.queue_free()
 		_ghost_sprite = null
+
+## 尝试旋转建筑（点击触发）
+func _try_rotate_building(cell_pos):
+	var cell = grid_map.get_cell(cell_pos.x, cell_pos.y)
+	if not cell or not cell.has_building or not cell.building_ref:
+		_show_toast("该位置没有可旋转的建筑")
+		return
+	if cell.building_ref.has_method("rotate"):
+		cell.building_ref.rotate(deg_to_rad(90))
+	else:
+		cell.building_ref.rotation += deg_to_rad(90)
+	_show_toast("建筑已旋转")
+
+## 尝试拆除建筑（点击触发，返还50%资源）
+func _try_demolish_building(cell_pos):
+	var cell = grid_map.get_cell(cell_pos.x, cell_pos.y)
+	if not cell or not cell.has_building or not cell.building_ref:
+		_show_toast("该位置没有可拆除的建筑")
+		return
+	# 返还50%资源
+	var refund = 50
+	if economy:
+		economy.add_money(refund)
+		_show_toast("建筑已拆除，返还 " + str(refund))
+	# 移除建筑
+	if is_instance_valid(cell.building_ref):
+		cell.building_ref.queue_free()
+	# 清除工人任务
+	if worker_sys and worker_sys.has_method("cancel_job"):
+		worker_sys.cancel_job(cell_pos.x, cell_pos.y)
+	# 清除格子
+	cell.has_building = false
+	cell.building_ref = null
+	cell.building_level = 0
+	_update_cell_visual(cell_pos.x, cell_pos.y)
 
 ## 切换移动模式
 func _toggle_move_mode():
@@ -1049,7 +1081,6 @@ func _on_tool_selected(tool_type: int):
 
 ## 主菜单选中 → 弹出子菜单
 func _on_main_category_selected(category_id: int):
-	print("[ROAD_DEBUG] _on_main_category_selected(", category_id, ")")
 	if category_id < 0:
 		if sub_menu:
 			sub_menu.hide_menu()
@@ -1076,21 +1107,16 @@ func _on_main_category_selected(category_id: int):
 
 ## 子菜单变体选中 → 激活工具
 func _on_variant_selected(variant_id: int):
-	print("[ROAD_DEBUG] _on_variant_selected(", variant_id, ")")
 	_current_variant = variant_id
 	_tool_active = true
 
 	camera.set_tool_active(true)
 
-	# 单项工具（非连续绘制的）直接清除选择
-	if variant_id in [200, 201, 202]:
+	# 单项工具（非连续绘制的）直接关闭子菜单
+	if variant_id in [202, 203]:
 		_tool_active = true
-		_info_mode = (variant_id == 201)
-		# 移动模式直接触发切换，不保留为当前工具
-		if variant_id == 202:
-			_current_variant = -1
-			_tool_active = false
-			_toggle_move_mode()
+		if variant_id == 203:
+			pass  # 拆除模式 — 点击后保持工具激活
 
 	# 关闭子菜单
 	if sub_menu:
@@ -1212,9 +1238,7 @@ func _update_cell_visual(x: int, y: int):
 	var pos = Vector2i(x, y)
 	# 等距模式下使用 IsoRenderer 渲染道路
 	if cell.terrain == grid_map.TerrainType.ROAD:
-		print("[ROAD_DEBUG] _update_cell_visual ROAD at (", x, ",", y, ") road_type=", cell.road_type)
 		if iso_renderer and iso_renderer.has_method("update_road"):
-			print("[ROAD_DEBUG]   -> calling iso_renderer.update_road")
 			iso_renderer.update_road(x, y, cell.road_type if cell.road_type < 3 else 0)
 		else:
 			road_map_layer.set_cell(pos)
