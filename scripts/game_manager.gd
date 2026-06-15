@@ -361,11 +361,25 @@ func _handle_game_input(event):
 		return
 
 	var world_pos = _get_world_position(event)
-	var cell_pos = grid_map.world_to_grid(world_pos)
+	var cell_pos = Vector2i.ZERO
+	if iso_renderer and iso_renderer.has_method("world_to_grid"):
+		cell_pos = iso_renderer.world_to_grid(world_pos)
+	else:
+		cell_pos = grid_map.world_to_grid(world_pos)
 
 	# 检查是否在地图范围内
 	if cell_pos.x < 0 or cell_pos.x >= GRID_WIDTH or cell_pos.y < 0 or cell_pos.y >= GRID_HEIGHT:
+		if iso_renderer and iso_renderer.has_method("hide_highlight"):
+			iso_renderer.hide_highlight()
+			iso_renderer.hide_ghost()
 		return
+
+	# 等距高亮跟随鼠标
+	if iso_renderer and iso_renderer.has_method("show_highlight"):
+		iso_renderer.show_highlight(cell_pos.x, cell_pos.y)
+		# 建筑放置模式：显示虚影
+		if _current_variant >= 0 and event is InputEventMouseMotion:
+			_update_ghost_position(cell_pos)
 
 	# 工具模式
 	if _current_tool >= 0 or _current_variant >= 0:
@@ -554,11 +568,21 @@ func _handle_building_placement(event, cell_pos: Vector2i, variant_id: int):
 			var sprite = Sprite2D.new()
 			sprite.texture = load(tex_path)
 			sprite.centered = true
-			sprite.position = Vector2(
-				cell_pos.x * CELL_SIZE + CELL_SIZE / 2.0,
-				cell_pos.y * CELL_SIZE + CELL_SIZE / 2.0
-			)
-			sprite.z_index = 5
+			# 等距坐标 + 阴影
+			if iso_renderer and iso_renderer.has_method("grid_to_world"):
+				var iso_pos = iso_renderer.grid_to_world(cell_pos.x, cell_pos.y)
+				sprite.position = iso_pos
+				# 添加建筑菱形阴影
+				if iso_renderer.has_method("create_shadow_sprite"):
+					var shadow = iso_renderer.create_shadow_sprite()
+					shadow.position = iso_pos
+					building_container.add_child(shadow)
+			else:
+				sprite.position = Vector2(
+					cell_pos.x * CELL_SIZE + CELL_SIZE / 2.0,
+					cell_pos.y * CELL_SIZE + CELL_SIZE / 2.0
+				)
+			sprite.z_index = 5 + cell_pos.y * 0.01
 			sprite.scale = Vector2(0.8, 0.8)
 			building_container.add_child(sprite)
 			cell.building_ref = sprite
@@ -597,10 +621,13 @@ func _update_ghost_position(cell_pos: Vector2i):
 		_ghost_sprite.scale = Vector2(0.8, 0.8)
 		building_container.add_child(_ghost_sprite)
 
-	_ghost_sprite.position = Vector2(
-		cell_pos.x * CELL_SIZE + CELL_SIZE / 2.0,
-		cell_pos.y * CELL_SIZE + CELL_SIZE / 2.0
-	)
+	if iso_renderer and iso_renderer.has_method("grid_to_world"):
+		_ghost_sprite.position = iso_renderer.grid_to_world(cell_pos.x, cell_pos.y)
+	else:
+		_ghost_sprite.position = Vector2(
+			cell_pos.x * CELL_SIZE + CELL_SIZE / 2.0,
+			cell_pos.y * CELL_SIZE + CELL_SIZE / 2.0
+		)
 
 func _remove_ghost():
 	if _ghost_sprite:
@@ -807,15 +834,17 @@ func _update_cell_visual(x: int, y: int):
 	if not cell:
 		return
 	var pos = Vector2i(x, y)
-	# 先清除该格的道路和分区显示
-	road_map_layer.set_cell(pos)
-	zone_map_layer.set_cell(pos)
-
+	# 等距模式下使用 IsoRenderer 渲染道路
 	if cell.terrain == grid_map.TerrainType.ROAD:
-		var coords = _get_road_tile_coords(x, y)
-		road_map_layer.set_cell(pos, cell.road_type if cell.road_type < 3 else 0, coords)
+		if iso_renderer and iso_renderer.has_method("update_road"):
+			iso_renderer.update_road(x, y, cell.road_type if cell.road_type < 3 else 0)
+		else:
+			road_map_layer.set_cell(pos)
+			var coords = _get_road_tile_coords(x, y)
+			road_map_layer.set_cell(pos, cell.road_type if cell.road_type < 3 else 0, coords)
 	elif grid_map.is_zoned(x, y) and not cell.has_building:
-		# 有建筑时隐藏分区色（建筑外观已体现类型）
+		road_map_layer.set_cell(pos)
+		zone_map_layer.set_cell(pos)
 		var src = 0
 		match cell.terrain:
 			grid_map.TerrainType.ZONE_RESIDENTIAL: src = 0
