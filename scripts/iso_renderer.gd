@@ -61,69 +61,14 @@ func update_road(gx: int, gy: int, road_type: int):
 		return
 	var coords = _get_road_coords(gx, gy)
 	_road.set_cell(0, Vector2i(gx, gy), road_type, coords)
-	# 调试：同时更新 sprite 道路预览
-	_update_road_sprite(gx, gy, road_type)
-
-func _road_sprite_key(gx: int, gy: int) -> String:
-	return "%d_%d" % [gx, gy]
-
-var _road_sprites: Dictionary = {}
-
-func _update_road_sprite(gx: int, gy: int, road_type: int):
-	# 只用于调试和预览 - 使用简单的彩色菱形 Sprite 作为道路标记
-	var key = _road_sprite_key(gx, gy)
-	var sp = _road_sprites.get(key)
-	if not sp:
-		sp = Sprite2D.new()
-		sp.name = "RoadSprite_%s" % key
-		# 使用随路类型变化的颜色
-		var colors = [Color(0.8, 0.6, 0.2, 0.9), Color(0.3, 0.3, 0.3, 0.9), Color(0.15, 0.15, 0.15, 0.9)]
-		var tex = _create_color_diamond(64, 32, colors[road_type % 3])
-		sp.texture = tex
-		sp.centered = true
-		sp.z_index = 2
-		sp.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		_road_sprites[key] = sp
-		add_child(sp)
-	sp.position = grid_to_world(gx, gy)
-
-func _create_color_diamond(w: int, h: int, color: Color) -> Texture2D:
-	var img = Image.create(w, h, false, Image.FORMAT_RGBA8)
-	for y in range(h):
-		for x in range(w):
-			var cx = w / 2
-			var cy = h / 2
-			var dx = abs(x - cx) / float(cx)
-			var dy = abs(y - cy) / float(cy)
-			if dx + dy <= 1.0:
-				img.set_pixel(x, y, color)
-			else:
-				img.set_pixel(x, y, Color(0, 0, 0, 0))
-	return ImageTexture.create_from_image(img)
 
 func clear_road(gx: int, gy: int):
 	if _road:
 		_road.set_cell(0, Vector2i(gx, gy))
-	_clear_road_sprite(gx, gy)
 
 func clear_all_roads():
 	if _road:
 		_road.clear()
-	_clear_all_road_sprites()
-
-func _clear_road_sprite(gx: int, gy: int):
-	var key = _road_sprite_key(gx, gy)
-	var sp = _road_sprites.get(key)
-	if sp:
-		sp.queue_free()
-		_road_sprites.erase(key)
-
-func _clear_all_road_sprites():
-	for key in _road_sprites.keys():
-		var sp = _road_sprites[key]
-		if sp:
-			sp.queue_free()
-	_road_sprites.clear()
 
 func _get_road_coords(cx: int, cy: int) -> Vector2i:
 	var is_road = func(x, y):
