@@ -58,6 +58,11 @@ var _info_mode := false
 var _ghost_sprite: Sprite2D = null   # 放置预览虚影
 var _remove_mode := false
 
+## 移动模式
+var _move_mode := false
+var _move_source_cell := Vector2i(-1, -1)
+var _move_source_variant := -1
+
 ## 建筑类型 → 纹理信息映射（variant_id → {texture, label, cost}）
 const BUILDING_TEXTURES := {
 	# 基本民生
@@ -416,6 +421,17 @@ func _handle_game_input(event):
 		if _current_variant >= 0 and event is InputEventMouseMotion:
 			_update_ghost_position(cell_pos)
 
+	# 移动模式
+	if _move_mode:
+		_handle_move_input(event, cell_pos)
+		# 移动模式下显示拾起建筑的虚影
+		if event is InputEventMouseMotion and _move_source_cell != Vector2i(-1, -1):
+			var saved_variant = _current_variant
+			_current_variant = _move_source_variant
+			_update_ghost_position(cell_pos)
+			_current_variant = saved_variant
+		return
+
 	# 工具模式
 	if _current_tool >= 0 or _current_variant >= 0:
 		if _is_press_event(event):
@@ -490,6 +506,12 @@ func _handle_tool_input(event, cell_pos: Vector2i):
 			_handle_remove_input(event, cell_pos)
 		201:  # Info
 			_handle_info_input(event, cell_pos)
+		202:  # Move (toggle 模式)
+			_toggle_move_mode()
+			if not _move_mode:
+				_current_variant = -1
+				_tool_active = false
+				_remove_ghost()
 
 func _handle_road_input(event, cell_pos: Vector2i, road_type: int = 0):
 	if _is_press_event(event):
@@ -534,6 +556,12 @@ func _handle_remove_input(event, cell_pos: Vector2i):
 	if _is_press_event(event):
 		var cell = grid_map.get_cell(cell_pos.x, cell_pos.y)
 		if cell:
+			# 手动放置的建筑（电厂、农场等）：单次点击移除
+			if cell.has_building and cell.building_variant_id >= 0:
+				var info = BUILDING_TEXTURES.get(cell.building_variant_id)
+				_remove_building_at(cell_pos.x, cell_pos.y)
+				_show_toast("已拆除 %s" % (info.label if info else "建筑"))
+				return
 			if cell.terrain == grid_map.TerrainType.ROAD:
 				road_system.start_remove(cell_pos)
 			elif grid_map.is_zoned(cell_pos.x, cell_pos.y):
@@ -589,11 +617,12 @@ func _handle_building_placement(event, cell_pos: Vector2i, variant_id: int):
 		_is_dragging = true
 
 		# 检查单元格是否可用
-		var cell = grid_map.get_cell(cell_pos.x, cell_pos.y)
-		if not cell or cell.has_building or cell.terrain == grid_map.TerrainType.ROAD:
+		if not _can_place_building(cell_pos.x, cell_pos.y, variant_id):
 			print("该位置不可放置 ", info.label)
 			_is_dragging = false
 			return
+
+		var cell = grid_map.get_cell(cell_pos.x, cell_pos.y)
 
 		# 检查资金
 		if not economy.can_afford(info.cost):
@@ -609,6 +638,7 @@ func _handle_building_placement(event, cell_pos: Vector2i, variant_id: int):
 		cell.building_level = 1
 		cell.building_size_x = 1
 		cell.building_size_y = 1
+		cell.building_variant_id = variant_id  # 保存 variant_id 用于移动/拆除
 
 		# 创建建筑精灵
 		var tex_path = "res://assets/textures/buildings/%s.png" % info.texture
@@ -633,7 +663,8 @@ func _handle_building_placement(event, cell_pos: Vector2i, variant_id: int):
 			sprite.z_index = 5 + cell_pos.y * 0.01
 			sprite.scale = Vector2(0.8, 0.8)
 			building_container.add_child(sprite)
-			# 手动放置的建筑（如电厂、农场）不设置 building_ref，防止与 zone 自动生长系统混淆
+			# 保存建筑精灵引用，供移动/拆除模式使用
+			cell.building_ref = sprite
 
 		_update_cell_visual(cell_pos.x, cell_pos.y)
 
@@ -646,6 +677,23 @@ func _handle_building_placement(event, cell_pos: Vector2i, variant_id: int):
 
 	elif _is_release_event(event):
 		_is_dragging = false
+
+## 检查指定位置是否可以放置建筑
+func _can_place_building(gx: int, gy: int, variant_id: int) -> bool:
+	# 检查格子范围
+	if gx < 0 or gx >= GRID_WIDTH or gy < 0 or gy >= GRID_HEIGHT:
+		return false
+	var cell = grid_map.get_cell(gx, gy)
+	if not cell:
+		return false
+	# 不能放在已有建筑/道路上
+	if cell.has_building or cell.terrain == grid_map.TerrainType.ROAD:
+		return false
+	# 水域和山上不能放
+	if cell.natural_terrain in [grid_map.NaturalTerrain.WATER, grid_map.NaturalTerrain.MOUNTAIN]:
+		return false
+	# 已分区的格子可以放置（覆盖分区）
+	return true
 
 ## 创建放置虚影（半透明建筑预览）
 func _update_ghost_position(cell_pos: Vector2i):
@@ -664,7 +712,6 @@ func _update_ghost_position(cell_pos: Vector2i):
 		_ghost_sprite = Sprite2D.new()
 		_ghost_sprite.texture = load(tex_path)
 		_ghost_sprite.centered = true
-		_ghost_sprite.modulate = Color(1, 1, 1, 0.5)
 		_ghost_sprite.z_index = 50
 		_ghost_sprite.scale = Vector2(0.8, 0.8)
 		building_container.add_child(_ghost_sprite)
@@ -677,10 +724,136 @@ func _update_ghost_position(cell_pos: Vector2i):
 			cell_pos.y * CELL_SIZE + CELL_SIZE / 2.0
 		)
 
+	# 颜色指示：绿色=可放置，红色=不可放置
+	var can_place = _can_place_building(cell_pos.x, cell_pos.y, _current_variant)
+	_ghost_sprite.modulate = Color(0, 1, 0, 0.4) if can_place else Color(1, 0, 0, 0.4)
+
 func _remove_ghost():
 	if _ghost_sprite:
 		_ghost_sprite.queue_free()
 		_ghost_sprite = null
+
+## 切换移动模式
+func _toggle_move_mode():
+	_move_mode = not _move_mode
+	if _move_mode:
+		_show_toast("点击一个建筑开始移动")
+	else:
+		_show_toast("移动模式已关闭")
+	_move_source_cell = Vector2i(-1, -1)
+	_move_source_variant = -1
+	_remove_ghost()
+
+## 处理移动模式输入
+func _handle_move_input(event, cell_pos: Vector2i):
+	if not _is_press_event(event):
+		return
+
+	if _move_source_cell == Vector2i(-1, -1):
+		# 第一步：点击源建筑
+		var cell = grid_map.get_cell(cell_pos.x, cell_pos.y)
+		if cell and cell.has_building and cell.building_variant_id >= 0:
+			_move_source_cell = cell_pos
+			_move_source_variant = cell.building_variant_id
+			_show_toast("已拾起建筑，点击新位置放置")
+		else:
+			_show_toast("该位置没有可移动的建筑")
+	else:
+		# 第二步：点击目标位置
+		var variant = _move_source_variant
+		if _can_place_building(cell_pos.x, cell_pos.y, variant):
+			# 检查资金
+			var info = BUILDING_TEXTURES.get(variant)
+			if info and not economy.can_afford(info.cost):
+				_show_toast("资金不足，无法移动")
+				_move_source_cell = Vector2i(-1, -1)
+				_move_source_variant = -1
+				_remove_ghost()
+				return
+
+			# 删除旧建筑
+			_remove_building_at(_move_source_cell.x, _move_source_cell.y)
+			# 扣费并放置新建筑
+			if info:
+				economy.spend(info.cost, "移动" + info.label)
+			_place_building_at(cell_pos.x, cell_pos.y, variant)
+			_show_toast("建筑已移动")
+		else:
+			_show_toast("该位置不可放置")
+		_move_source_cell = Vector2i(-1, -1)
+		_move_source_variant = -1
+		_remove_ghost()
+
+## 在指定位置放置建筑（移动模式用）
+func _place_building_at(gx: int, gy: int, variant_id: int):
+	if not BUILDING_TEXTURES.has(variant_id):
+		return
+	var info = BUILDING_TEXTURES[variant_id]
+	var cell = grid_map.get_cell(gx, gy)
+	if not cell:
+		return
+
+	# 标记单元格
+	cell.has_building = true
+	cell.building_level = 1
+	cell.building_size_x = 1
+	cell.building_size_y = 1
+	cell.building_variant_id = variant_id
+
+	# 创建建筑精灵
+	var tex_path = "res://assets/textures/buildings/%s.png" % info.texture
+	if ResourceLoader.exists(tex_path):
+		var sprite = Sprite2D.new()
+		sprite.texture = load(tex_path)
+		sprite.centered = true
+		if iso_renderer and iso_renderer.has_method("grid_to_world"):
+			var iso_pos = iso_renderer.grid_to_world(gx, gy)
+			sprite.position = iso_pos
+			if iso_renderer.has_method("create_shadow_sprite"):
+				var shadow = iso_renderer.create_shadow_sprite()
+				shadow.position = iso_pos
+				building_container.add_child(shadow)
+		else:
+			sprite.position = Vector2(
+				gx * CELL_SIZE + CELL_SIZE / 2.0,
+				gy * CELL_SIZE + CELL_SIZE / 2.0
+			)
+		sprite.z_index = 5 + gy * 0.01
+		sprite.scale = Vector2(0.8, 0.8)
+		building_container.add_child(sprite)
+		cell.building_ref = sprite
+
+	_update_cell_visual(gx, gy)
+
+## 移除指定位置的建筑
+func _remove_building_at(gx: int, gy: int):
+	var cell = grid_map.get_cell(gx, gy)
+	if not cell:
+		return
+	# 清除建筑精灵
+	if cell.building_ref and is_instance_valid(cell.building_ref):
+		cell.building_ref.queue_free()
+	cell.has_building = false
+	cell.building_ref = null
+	cell.building_level = 0
+	cell.building_variant_id = -1
+	_update_cell_visual(gx, gy)
+
+## 查找单元格对应的 variant_id
+func _get_variant_for_cell(cell) -> int:
+	if not cell or not cell.has_building:
+		return -1
+	# 优先使用保存的 building_variant_id
+	if cell.building_variant_id >= 0:
+		return cell.building_variant_id
+	# 回退：遍历 BUILDING_TEXTURES 查找匹配
+	for vid in BUILDING_TEXTURES:
+		var info = BUILDING_TEXTURES[vid]
+		if cell.terrain == grid_map.TerrainType.ROAD:
+			continue
+		if cell.has_building and cell.building_level > 0:
+			return vid
+	return -1
 
 ## 显示顶部通知提示
 func _show_toast(msg: String):
@@ -772,9 +945,14 @@ func _on_variant_selected(variant_id: int):
 	camera.set_tool_active(true)
 
 	# 单项工具（非连续绘制的）直接清除选择
-	if variant_id in [200, 201]:
+	if variant_id in [200, 201, 202]:
 		_tool_active = true
 		_info_mode = (variant_id == 201)
+		# 移动模式直接触发切换，不保留为当前工具
+		if variant_id == 202:
+			_current_variant = -1
+			_tool_active = false
+			_toggle_move_mode()
 
 	# 关闭子菜单
 	if sub_menu:

@@ -85,6 +85,10 @@ func get_variants_for_category(cat_id: int) -> Dictionary:
 					{"texture_file": "power_plant", "label": "电力", "id": 1000, "cost": 500},
 					{"texture_file": "farm", "label": "农场", "id": 1001, "cost": 200},
 					{"texture_file": "water_pump", "label": "水", "id": 1002, "cost": 300},
+					# 工具
+					{"texture_file": "", "label": "拆除", "id": 200, "cost": 0},
+					{"texture_file": "", "label": "信息", "id": 201, "cost": 0},
+					{"texture_file": "", "label": "移动", "id": 202, "cost": 0},
 				]
 			}
 		Category.PUBLIC:

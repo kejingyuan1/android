@@ -34,7 +34,8 @@ class CellData:
 	var building_level: int  # 0=无, 1-3=等级
 	var building_size_x: int  # 建筑占地宽度（格）
 	var building_size_y: int  # 建筑占地高度（格）
-	var building_ref         # BuildingNode 弱引用
+	var building_ref         # BuildingNode 弱引用（手动放置建筑为 Sprite2D，分区自动生长为 BuildingNode）
+	var building_variant_id: int = -1  # 手动放置建筑的 variant_id（用于移动/拆除时识别）
 	var zone_connected: bool # 是否已接入分区网络
 
 	func _init(p_x: int, p_y: int):
@@ -49,6 +50,7 @@ class CellData:
 		building_size_x = 1
 		building_size_y = 1
 		building_ref = null
+		building_variant_id = -1
 		zone_connected = false
 
 ## 网格属性（横屏 240×160）
