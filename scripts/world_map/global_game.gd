@@ -428,17 +428,17 @@ func enter_city_view():
 	var city_center_x = town_hall_world_pos.x
 	var city_center_y = town_hall_world_pos.y
 	city_camera.position = Vector2(city_center_x, city_center_y)
-	# 从远视图开始 → 拉近到大本营
-	city_camera.zoom = Vector2(0.12, 0.12)
+	# 从较近的视图开始 → 拉近到大本营（避免初始时大量空白）
+	city_camera.zoom = Vector2(0.22, 0.22)
 	# 禁用边界钳制，避免动画过程中被拉回
 	if city_camera.has_method("set_clamp_enabled"):
 		city_camera.set_clamp_enabled(false)
 	
-	# 缩放动画：从全地图拉近到大本营周边（类似世界地图入场效果）
+	# 缩放动画：从近处拉近到大本营周边
 	var zoom_tween = create_tween()
 	zoom_tween.set_ease(Tween.EASE_IN_OUT)
 	zoom_tween.set_trans(Tween.TRANS_SINE)
-	zoom_tween.tween_property(city_camera, "zoom", Vector2(0.45, 0.45), 1.2)
+	zoom_tween.tween_property(city_camera, "zoom", Vector2(0.55, 0.55), 1.2)
 	if city_camera.has_method("set_clamp_enabled"):
 		zoom_tween.tween_callback(Callable(city_camera, "set_clamp_enabled").bind(true))
 

@@ -1383,8 +1383,39 @@ func _on_road_changed():
 # ============ 大本营系统 ============
 
 # 大本营网格位置
-const TOWN_HALL_GX := 110
-const TOWN_HALL_GY := 75
+const TOWN_HALL_GX := 120
+const TOWN_HALL_GY := 80
+var _town_hall_pos := Vector2i(-1, -1)  # 实际放置位置
+
+## 寻找适合放置大本营的格子（避开水域/山脉）
+func _find_town_hall_pos() -> Vector2i:
+	var cx := TOWN_HALL_GX
+	var cy := TOWN_HALL_GY
+	if not grid_map:
+		return Vector2i(cx, cy)
+	var search_radius := 30
+	for r in range(search_radius):
+		for dx in range(-r, r+1):
+			for dy in range(-r, r+1):
+				var gx = cx + dx
+				var gy = cy + dy
+				if gx < 2 or gx >= 238 or gy < 2 or gy >= 158:
+					continue
+				var cell = grid_map.get_cell(gx, gy)
+				if cell and cell.natural_terrain == grid_map.NaturalTerrain.GRASS: 
+					# 检查周围 2×2 范围是否都是草地
+					var all_grass := true
+					for sx in range(2):
+						for sy in range(2):
+							var nc = grid_map.get_cell(gx + sx, gy + sy)
+							if not nc or nc.natural_terrain != grid_map.NaturalTerrain.GRASS:
+								all_grass = false
+								break
+						if not all_grass:
+							break
+					if all_grass:
+						return Vector2i(gx, gy)
+	return Vector2i(cx, cy)
 
 ## 放置大本营（在初始化完成后调用）
 func _place_town_hall():
@@ -1398,8 +1429,14 @@ func _place_town_hall():
 	civ_id = clampi(civ_id, 0, 5)
 	var civ_name = civ_names[civ_id]
 	
+	# 使用搜索找到的合适位置
+	var th_pos = _find_town_hall_pos()
+	var th_gx = th_pos.x
+	var th_gy = th_pos.y
+	_town_hall_pos = Vector2i(th_gx, th_gy)
+	
 	# 设置大本营数据
-	var cell = grid_map.get_cell(TOWN_HALL_GX, TOWN_HALL_GY)
+	var cell = grid_map.get_cell(th_gx, th_gy)
 	if not cell:
 		return
 	cell.has_building = true
@@ -1411,8 +1448,13 @@ func _place_town_hall():
 	# 清除大本营周围 3×3 区域内已有道路（给大本营留空间）
 	for dx in range(-1, 2):
 		for dy in range(-1, 2):
-			var nx = TOWN_HALL_GX + dx
-			var ny = TOWN_HALL_GY + dy
+			var nx = th_gx + dx
+			var ny = th_gy + dy
+			var nc = grid_map.get_cell(nx, ny)
+			if nc and nc.terrain == grid_map.TerrainType.ROAD:
+				nc.terrain = grid_map.TerrainType.GRASS
+				if iso_renderer and iso_renderer.has_method("clear_road"):
+					iso_renderer.clear_road(nx, ny)
 			var nc = grid_map.get_cell(nx, ny)
 			if nc and nc.terrain == grid_map.TerrainType.ROAD:
 				nc.terrain = grid_map.TerrainType.GRASS
@@ -1444,7 +1486,7 @@ func _place_town_hall():
 	
 	# 等距坐标定位
 	if iso_renderer and iso_renderer.has_method("grid_to_world"):
-		var iso_pos = iso_renderer.grid_to_world(TOWN_HALL_GX, TOWN_HALL_GY)
+		var iso_pos = iso_renderer.grid_to_world(th_gx, th_gy)
 		sprite.position = iso_pos
 		# 添加阴影
 		if iso_renderer.has_method("create_shadow_sprite"):
@@ -1452,8 +1494,8 @@ func _place_town_hall():
 			shadow.position = iso_pos
 			building_container.add_child(shadow)
 	
-	sprite.z_index = 10 + TOWN_HALL_GY * 0.01
-	sprite.scale = Vector2(0.35, 0.35)  # 大本营比普通建筑稍大
+	sprite.z_index = 10 + th_gy * 0.01
+	sprite.scale = Vector2(0.45, 0.45)  # 大本营比普通建筑更大更醒目
 	
 	building_container.add_child(sprite)
 	cell.building_ref = sprite
@@ -1463,11 +1505,13 @@ func _place_town_hall():
 	if global_game:
 		global_game.town_hall_world_pos = th_world_pos
 	
-	print("[TOWN_HALL] 大本营已放置: ", civ_name, " L1 @ (", TOWN_HALL_GX, ", ", TOWN_HALL_GY, ") 世界坐标=", th_world_pos)
+	print("[TOWN_HALL] 大本营已放置: ", civ_name, " L1 @ (", th_gx, ", ", th_gy, ") 世界坐标=", th_world_pos)
 
 ## 升级大本营
 func upgrade_town_hall():
-	var cell = grid_map.get_cell(TOWN_HALL_GX, TOWN_HALL_GY)
+	if _town_hall_pos.x < 0:
+		return
+	var cell = grid_map.get_cell(_town_hall_pos.x, _town_hall_pos.y)
 	if not cell or not cell.has_building or not cell.building_ref:
 		return
 	
@@ -1491,7 +1535,7 @@ func upgrade_town_hall():
 			cell.building_ref.texture = new_tex
 			cell.building_level = new_level
 			# 逐级增大比例
-			cell.building_ref.scale = Vector2(0.35 + (new_level - 1) * 0.025, 0.35 + (new_level - 1) * 0.025)
+			cell.building_ref.scale = Vector2(0.45 + (new_level - 1) * 0.035, 0.45 + (new_level - 1) * 0.035)
 			_show_toast("⬆️ 大本营升级到 Lv." + str(new_level))
 			print("[TOWN_HALL] 升级到 L", new_level)
 	else:
