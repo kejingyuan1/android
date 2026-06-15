@@ -104,29 +104,17 @@ func _generate_terrain():
 	terrain_gen.queue_free()
 
 func _generate_terrain_texture():
-	# 地形纹理必须在 _init_tilemaps 之后调用，因为需要 grid_renderer
-	if not grid_renderer:
+	# 使用等距（Isometric）渲染器替代平面纹理
+	if not iso_renderer:
 		return
 	if not grid_map:
 		return
-	# 获取世界种子用于确定性纹理生成（缓存 key）
 	var world_seed = 0
 	var global_game = get_node("/root/Main/GlobalGame")
 	if global_game and global_game.world_gen:
 		world_seed = global_game.world_gen.world_seed
-	# 传递种子使城市纹理可缓存
-	grid_renderer.setup(grid_map, world_seed)
-	var tex = grid_renderer.generate()
-	if tex:
-		var sprite = Sprite2D.new()
-		sprite.texture = tex
-		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # 像素风清晰边缘
-		# 纹理分辨率 = PIXELS_PER_CELL=24，缩放 = CELL_SIZE(32) / 24
-		sprite.scale = Vector2(32.0 / 24.0, 32.0 / 24.0)
-		sprite.centered = false
-		sprite.position = Vector2(0, 0)
-		sprite.z_index = 0
-		grid_renderer.add_child(sprite)
+	iso_renderer.setup(grid_map, world_seed)
+	iso_renderer.generate()
 
 func _init_systems():
 	# 创建网格数据
@@ -184,6 +172,13 @@ func _init_tilemaps():
 	# 通过父节点查找兄弟节点下的子节点
 	var parent = get_parent()
 	grid_renderer = parent.get_node("GameWorld/GridRenderer")
+	# 创建等距渲染器（如果不存在）
+	var iso_node = parent.get_node_or_null("GameWorld/IsoRenderer")
+	if not iso_node:
+		iso_node = Node2D.new()
+		iso_node.name = "IsoRenderer"
+		parent.get_node("GameWorld").add_child(iso_node)
+	iso_renderer = iso_node
 	road_map_layer = parent.get_node("GameWorld/RoadMap")
 	zone_map_layer = parent.get_node("GameWorld/ZoneMap")
 	highlight_map_layer = parent.get_node("GameWorld/HighlightMap")
@@ -364,7 +359,12 @@ func _handle_game_input(event):
 		return
 
 	var world_pos = _get_world_position(event)
-	var cell_pos = grid_map.world_to_grid(world_pos)
+	# 使用等距坐标转换（如果 iso_renderer 可用）
+	var cell_pos = Vector2i.ZERO
+	if iso_renderer and iso_renderer.has_method("world_to_grid"):
+		cell_pos = iso_renderer.world_to_grid(world_pos)
+	else:
+		cell_pos = grid_map.world_to_grid(world_pos)
 
 	# 检查是否在地图范围内
 	if cell_pos.x < 0 or cell_pos.x >= GRID_WIDTH or cell_pos.y < 0 or cell_pos.y >= GRID_HEIGHT:
