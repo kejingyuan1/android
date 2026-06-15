@@ -82,6 +82,19 @@ func spend(amount: float, reason: String = "") -> bool:
 func is_bankrupt() -> bool:
 	return money < -1000.0
 
+## 增加金钱
+func add_money(amount: float):
+	money += amount
+	emit_signal("money_changed", money)
+
+## 增加木材
+func add_wood(amount: float):
+	wood += amount
+
+## 增加石材
+func add_stone(amount: float):
+	stone += amount
+
 ## 检查是否支付得起多资源消耗
 func can_afford_resources(gold_amount: float, wood_amount: float, stone_amount: float) -> bool:
 	return money >= gold_amount and wood >= wood_amount and stone >= stone_amount

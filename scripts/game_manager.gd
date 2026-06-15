@@ -434,14 +434,11 @@ func _handle_game_input(event):
 
 	# 工具模式
 	if _current_tool >= 0 or _current_variant >= 0:
-		if _is_press_event(event):
-			print("[ROAD_DEBUG] Tool active! _current_variant=", _current_variant, " _current_tool=", _current_tool, " cell=", cell_pos)
 		_handle_tool_input(event, cell_pos)
 		# mouse motion 时更新虚影位置
 		if event is InputEventMouseMotion and _current_variant >= 0:
 			_update_ghost_position(cell_pos)
 	elif _is_press_event(event):
-		print("[ROAD_DEBUG] No tool active: _current_variant=", _current_variant, " _current_tool=", _current_tool)
 		_handle_normal_tap(cell_pos)
 		# 清除虚影
 		if _ghost_sprite and _current_variant < 0:
@@ -469,7 +466,6 @@ func _get_world_position(event) -> Vector2:
 func _handle_tool_input(event, cell_pos: Vector2i):
 	# 优先使用 _current_variant（新建筑系统），回退到 _current_tool（旧道路/分区系统）
 	var v = _current_variant if _current_variant >= 0 else _current_tool
-	print("[ROAD_DEBUG] _handle_tool_input v=", v, " _current_variant=", _current_variant, " _current_tool=", _current_tool)
 	match v:
 		0, 1, 2:  # Road variants
 			_handle_road_input(event, cell_pos, v)
@@ -640,31 +636,56 @@ func _handle_building_placement(event, cell_pos: Vector2i, variant_id: int):
 		cell.building_size_y = 1
 		cell.building_variant_id = variant_id  # 保存 variant_id 用于移动/拆除
 
-		# 创建建筑精灵
-		var tex_path = "res://assets/textures/buildings/%s.png" % info.texture
-		if ResourceLoader.exists(tex_path):
-			var sprite = Sprite2D.new()
-			sprite.texture = load(tex_path)
-			sprite.centered = true
-			# 等距坐标 + 阴影
-			if iso_renderer and iso_renderer.has_method("grid_to_world"):
-				var iso_pos = iso_renderer.grid_to_world(cell_pos.x, cell_pos.y)
-				sprite.position = iso_pos
-				# 添加建筑菱形阴影
-				if iso_renderer.has_method("create_shadow_sprite"):
+		# 防御建筑使用 DefenseTower 子类
+		if variant_id >= 4000 and variant_id <= 4004:
+			var tower = _create_defense_tower(variant_id, cell_pos)
+			if tower:
+				building_container.add_child(tower)
+				# 阴影
+				if iso_renderer and iso_renderer.has_method("create_shadow_sprite"):
+					var iso_pos = iso_renderer.grid_to_world(cell_pos.x, cell_pos.y)
 					var shadow = iso_renderer.create_shadow_sprite()
 					shadow.position = iso_pos
 					building_container.add_child(shadow)
-			else:
-				sprite.position = Vector2(
-					cell_pos.x * CELL_SIZE + CELL_SIZE / 2.0,
-					cell_pos.y * CELL_SIZE + CELL_SIZE / 2.0
-				)
-			sprite.z_index = 5 + cell_pos.y * 0.01
-			sprite.scale = Vector2(0.8, 0.8)
-			building_container.add_child(sprite)
-			# 保存建筑精灵引用，供移动/拆除模式使用
-			cell.building_ref = sprite
+				cell.building_ref = tower
+		# 资源建筑使用 ResourceBuilding 子类
+		elif variant_id >= 5000 and variant_id <= 5002:
+			var res_bld = _create_resource_building(variant_id, cell_pos)
+			if res_bld:
+				building_container.add_child(res_bld)
+				# 阴影
+				if iso_renderer and iso_renderer.has_method("create_shadow_sprite"):
+					var iso_pos = iso_renderer.grid_to_world(cell_pos.x, cell_pos.y)
+					var shadow = iso_renderer.create_shadow_sprite()
+					shadow.position = iso_pos
+					building_container.add_child(shadow)
+				cell.building_ref = res_bld
+		else:
+			# 创建建筑精灵
+			var tex_path = "res://assets/textures/buildings/%s.png" % info.texture
+			if ResourceLoader.exists(tex_path):
+				var sprite = Sprite2D.new()
+				sprite.texture = load(tex_path)
+				sprite.centered = true
+				# 等距坐标 + 阴影
+				if iso_renderer and iso_renderer.has_method("grid_to_world"):
+					var iso_pos = iso_renderer.grid_to_world(cell_pos.x, cell_pos.y)
+					sprite.position = iso_pos
+					# 添加建筑菱形阴影
+					if iso_renderer.has_method("create_shadow_sprite"):
+						var shadow = iso_renderer.create_shadow_sprite()
+						shadow.position = iso_pos
+						building_container.add_child(shadow)
+				else:
+					sprite.position = Vector2(
+						cell_pos.x * CELL_SIZE + CELL_SIZE / 2.0,
+						cell_pos.y * CELL_SIZE + CELL_SIZE / 2.0
+					)
+				sprite.z_index = 5 + cell_pos.y * 0.01
+				sprite.scale = Vector2(0.8, 0.8)
+				building_container.add_child(sprite)
+				# 保存建筑精灵引用，供移动/拆除模式使用
+				cell.building_ref = sprite
 
 		_update_cell_visual(cell_pos.x, cell_pos.y)
 
@@ -800,28 +821,51 @@ func _place_building_at(gx: int, gy: int, variant_id: int):
 	cell.building_size_y = 1
 	cell.building_variant_id = variant_id
 
-	# 创建建筑精灵
-	var tex_path = "res://assets/textures/buildings/%s.png" % info.texture
-	if ResourceLoader.exists(tex_path):
-		var sprite = Sprite2D.new()
-		sprite.texture = load(tex_path)
-		sprite.centered = true
-		if iso_renderer and iso_renderer.has_method("grid_to_world"):
-			var iso_pos = iso_renderer.grid_to_world(gx, gy)
-			sprite.position = iso_pos
-			if iso_renderer.has_method("create_shadow_sprite"):
+	# 防御建筑使用 DefenseTower 子类
+	if variant_id >= 4000 and variant_id <= 4004:
+		var tower = _create_defense_tower(variant_id, Vector2i(gx, gy))
+		if tower:
+			building_container.add_child(tower)
+			if iso_renderer and iso_renderer.has_method("create_shadow_sprite"):
+				var iso_pos = iso_renderer.grid_to_world(gx, gy)
 				var shadow = iso_renderer.create_shadow_sprite()
 				shadow.position = iso_pos
 				building_container.add_child(shadow)
-		else:
-			sprite.position = Vector2(
-				gx * CELL_SIZE + CELL_SIZE / 2.0,
-				gy * CELL_SIZE + CELL_SIZE / 2.0
-			)
-		sprite.z_index = 5 + gy * 0.01
-		sprite.scale = Vector2(0.8, 0.8)
-		building_container.add_child(sprite)
-		cell.building_ref = sprite
+			cell.building_ref = tower
+	# 资源建筑使用 ResourceBuilding 子类
+	elif variant_id >= 5000 and variant_id <= 5002:
+		var res_bld = _create_resource_building(variant_id, Vector2i(gx, gy))
+		if res_bld:
+			building_container.add_child(res_bld)
+			if iso_renderer and iso_renderer.has_method("create_shadow_sprite"):
+				var iso_pos = iso_renderer.grid_to_world(gx, gy)
+				var shadow = iso_renderer.create_shadow_sprite()
+				shadow.position = iso_pos
+				building_container.add_child(shadow)
+			cell.building_ref = res_bld
+	else:
+		# 创建建筑精灵
+		var tex_path = "res://assets/textures/buildings/%s.png" % info.texture
+		if ResourceLoader.exists(tex_path):
+			var sprite = Sprite2D.new()
+			sprite.texture = load(tex_path)
+			sprite.centered = true
+			if iso_renderer and iso_renderer.has_method("grid_to_world"):
+				var iso_pos = iso_renderer.grid_to_world(gx, gy)
+				sprite.position = iso_pos
+				if iso_renderer.has_method("create_shadow_sprite"):
+					var shadow = iso_renderer.create_shadow_sprite()
+					shadow.position = iso_pos
+					building_container.add_child(shadow)
+			else:
+				sprite.position = Vector2(
+					gx * CELL_SIZE + CELL_SIZE / 2.0,
+					gy * CELL_SIZE + CELL_SIZE / 2.0
+				)
+			sprite.z_index = 5 + gy * 0.01
+			sprite.scale = Vector2(0.8, 0.8)
+			building_container.add_child(sprite)
+			cell.building_ref = sprite
 
 	_update_cell_visual(gx, gy)
 
@@ -838,6 +882,71 @@ func _remove_building_at(gx: int, gy: int):
 	cell.building_level = 0
 	cell.building_variant_id = -1
 	_update_cell_visual(gx, gy)
+
+## 创建防御建筑实例
+func _create_defense_tower(variant_id, cell_pos):
+	var tower = null
+	var iso_pos = iso_renderer.grid_to_world(cell_pos.x, cell_pos.y) if iso_renderer else Vector2(cell_pos.x * CELL_SIZE, cell_pos.y * CELL_SIZE)
+	match variant_id:
+		4000:
+			# 城墙
+			tower = preload("res://scripts/defense/wall_building.gd").new()
+			tower.position = iso_pos
+			tower.setup(cell_pos.x, cell_pos.y, grid_map)
+		4001:
+			tower = preload("res://scripts/defense/cannon_tower.gd").new()
+			tower.position = iso_pos
+			tower.setup(cell_pos.x, cell_pos.y, 1)
+		4002:
+			tower = preload("res://scripts/defense/archer_tower.gd").new()
+			tower.position = iso_pos
+			tower.setup(cell_pos.x, cell_pos.y, 1)
+		4003:
+			tower = preload("res://scripts/defense/wizard_tower.gd").new()
+			tower.position = iso_pos
+			tower.setup(cell_pos.x, cell_pos.y, 1)
+		4004:
+			tower = preload("res://scripts/defense/mortar_tower.gd").new()
+			tower.position = iso_pos
+			tower.setup(cell_pos.x, cell_pos.y, 1)
+	return tower
+
+## 创建资源建筑实例
+func _create_resource_building(variant_id, cell_pos):
+	var bld = null
+	var iso_pos = iso_renderer.grid_to_world(cell_pos.x, cell_pos.y) if iso_renderer else Vector2(cell_pos.x * CELL_SIZE, cell_pos.y * CELL_SIZE)
+	match variant_id:
+		5000:
+			bld = preload("res://scripts/resources/gold_mine.gd").new()
+			bld.position = iso_pos
+			bld.setup(cell_pos.x, cell_pos.y, 1)
+		5001:
+			bld = preload("res://scripts/resources/elixir_collector.gd").new()
+			bld.position = iso_pos
+			bld.setup(cell_pos.x, cell_pos.y, 1)
+		5002:
+			bld = preload("res://scripts/resources/storage_building.gd").new()
+			bld.position = iso_pos
+			bld.setup(cell_pos.x, cell_pos.y, 1)
+	return bld
+
+## 更新资源生产（从 ResourceBuilding 收集资源到经济系统）
+func _update_resource_production():
+	# 遍历建筑容器，找到所有 ResourceBuilding，收集它们的产出
+	for child in building_container.get_children():
+		if child.has_method("get_collectable_amount") and child.has_method("collect_all"):
+			var amount = child.collect_all()
+			if amount > 0:
+				match child.resource_type:
+					"gold":
+						economy.add_money(amount)
+					"elixir":
+						# elixir 暂时作为金钱处理（后续可独立）
+						economy.add_money(amount)
+					"wood":
+						economy.add_wood(amount)
+					"stone":
+						economy.add_stone(amount)
 
 ## 查找单元格对应的 variant_id
 func _get_variant_for_cell(cell) -> int:
@@ -988,6 +1097,9 @@ func _run_sim_tick():
 
 	# 2. 建筑生长
 	building_system.process_tick()
+
+	# 2.5 资源收集（从 ResourceBuilding 采集资源到经济系统）
+	_update_resource_production()
 
 	# 3. 经济结算
 	economy.process_tick()
