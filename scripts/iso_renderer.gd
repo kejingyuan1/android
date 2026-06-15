@@ -75,11 +75,12 @@ func update_road(gx: int, gy: int, road_type: int):
 		_road_container.add_child(sprite)
 		_road_sprites[sprite_key] = sprite
 	
-	# 从大图中提取子图块作为纹理
-	var atlas_tex = AtlasTexture.new()
-	atlas_tex.atlas = sheet
-	atlas_tex.region = Rect2(atlas_x, atlas_y, TILE_W, TILE_H)
-	sprite.texture = atlas_tex
+	# 从 spritesheet 中提取子图块作为纹理
+	var img = sheet.get_image()
+	if img:
+		var sub = img.get_region(Rect2i(atlas_x, atlas_y, TILE_W, TILE_H))
+		if sub:
+			sprite.texture = ImageTexture.create_from_image(sub)
 	sprite.position = grid_to_world(gx, gy)
 
 func clear_road(gx: int, gy: int):
