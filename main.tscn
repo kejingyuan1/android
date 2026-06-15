@@ -63,12 +63,12 @@ visible = false
 z_index = 20
 
 [node name="CityCamera" type="Camera2D" parent="CityViewLayer"]
-position = Vector2(2560, 2560)
+position = Vector2(1280, 2800)
 zoom = Vector2(0.18, 0.18)
-limit_left = 0
-limit_top = 0
-limit_right = 5120
-limit_bottom = 5120
+limit_left = -5200
+limit_top = -5200
+limit_right = 9000
+limit_bottom = 7000
 drag_margin_h_enabled = false
 drag_margin_v_enabled = false
 script = ExtResource("11")

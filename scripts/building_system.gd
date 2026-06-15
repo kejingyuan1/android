@@ -132,7 +132,7 @@ func _try_upgrade_building(cell) -> bool:
 	if not _economy.spend(cost, "????"):
 		return false
 	cell.building_level = current_level + 1
-	if cell.building_ref:
+	if cell.building_ref and is_instance_valid(cell.building_ref) and cell.building_ref.has_method("update_level"):
 		cell.building_ref.update_level(cell.building_level)
 	else:
 		var bld = _create_building_node(cell.x, cell.y, cell.terrain, cell.building_level)

@@ -107,8 +107,10 @@ func _generate_terrain():
 func _generate_terrain_texture():
 	# 使用等距渲染器
 	if not iso_renderer:
+		print("[WARN] iso_renderer is null, skipping isometric terrain generation")
 		return
 	if not grid_map:
+		print("[WARN] grid_map is null, skipping terrain")
 		return
 	var world_seed = 0
 	var global_game = get_node("/root/Main/GlobalGame")
@@ -116,6 +118,26 @@ func _generate_terrain_texture():
 		world_seed = global_game.world_gen.world_seed
 	iso_renderer.setup(grid_map, world_seed)
 	iso_renderer.generate()
+	print("[DONE] Iso terrain generated, hiding flat renderer")
+	
+	# 隐藏旧的平面渲染器，只显示等距渲染
+	if grid_renderer:
+		grid_renderer.visible = false
+		print("  - grid_renderer hidden")
+	else:
+		print("  - WARN: grid_renderer is null, cannot hide")
+	# 隐藏平面的道路图层，只使用等距道路
+	if road_map_layer:
+		road_map_layer.visible = false
+		print("  - road_map_layer hidden")
+	else:
+		print("  - WARN: road_map_layer is null")
+	if zone_map_layer:
+		zone_map_layer.visible = false
+		print("  - zone_map_layer hidden")
+	if highlight_map_layer:
+		highlight_map_layer.visible = false
+		print("  - highlight_map_layer hidden")
 
 func _init_systems():
 	# 创建网格数据
@@ -557,7 +579,6 @@ func _handle_building_placement(event, cell_pos: Vector2i, variant_id: int):
 
 		# 标记单元格
 		cell.has_building = true
-		cell.terrain = grid_map.TerrainType.ZONE_RESIDENTIAL
 		cell.building_level = 1
 		cell.building_size_x = 1
 		cell.building_size_y = 1
@@ -585,7 +606,7 @@ func _handle_building_placement(event, cell_pos: Vector2i, variant_id: int):
 			sprite.z_index = 5 + cell_pos.y * 0.01
 			sprite.scale = Vector2(0.8, 0.8)
 			building_container.add_child(sprite)
-			cell.building_ref = sprite
+			# 手动放置的建筑（如电厂、农场）不设置 building_ref，防止与 zone 自动生长系统混淆
 
 		_update_cell_visual(cell_pos.x, cell_pos.y)
 
@@ -857,6 +878,10 @@ func _full_render():
 	road_map_layer.clear()
 	zone_map_layer.clear()
 	highlight_map_layer.clear()
+	
+	# 等距模式：先清除等距道路层再重新渲染
+	if iso_renderer and iso_renderer.has_method("clear_all_roads"):
+		iso_renderer.clear_all_roads()
 
 	for y in range(GRID_HEIGHT):
 		for x in range(GRID_WIDTH):
@@ -867,8 +892,12 @@ func _full_render():
 			var pos = Vector2i(x, y)
 
 			if cell.terrain == grid_map.TerrainType.ROAD:
-				var coords = _get_road_tile_coords(x, y)
-				road_map_layer.set_cell(pos, cell.road_type if cell.road_type < 3 else 0, coords)
+				# 等距模式下使用 IsoRenderer 渲染道路
+				if iso_renderer and iso_renderer.has_method("update_road"):
+					iso_renderer.update_road(x, y, cell.road_type if cell.road_type < 3 else 0)
+				else:
+					var coords = _get_road_tile_coords(x, y)
+					road_map_layer.set_cell(pos, cell.road_type if cell.road_type < 3 else 0, coords)
 			elif cell.terrain == grid_map.TerrainType.ZONE_RESIDENTIAL and not cell.has_building:
 				zone_map_layer.set_cell(pos, 0, Vector2i(0, 0))
 			elif cell.terrain == grid_map.TerrainType.ZONE_COMMERCIAL and not cell.has_building:

@@ -409,13 +409,25 @@ func enter_city_view():
 		bottom_bar.visible = true
 	city_camera.make_current()
 
+	# 强制隐藏平面渲染图层，确保只显示等距视图
+	var game_world = city_view_layer.get_node_or_null("GameWorld")
+	if game_world:
+		var flat_grid = game_world.get_node_or_null("GridRenderer")
+		if flat_grid: flat_grid.visible = false
+		var flat_road = game_world.get_node_or_null("RoadMap")
+		if flat_road: flat_road.visible = false
+		var flat_zone = game_world.get_node_or_null("ZoneMap")
+		if flat_zone: flat_zone.visible = false
+		var flat_hl = game_world.get_node_or_null("HighlightMap")
+		if flat_hl: flat_hl.visible = false
+
 	# 计算城市视图的中心坐标和初始缩放（刚好看到全图）
-	# 地图尺寸: 240×32=7680 宽 × 160×32=5120 高
-	var city_center_x = 3840
-	var city_center_y = 2560
+	# 等距地图中心: grid_to_world(120, 80) = ((120-80)*32, (120+80)*16) = (1280, 3200)
+	var city_center_x = 1280
+	var city_center_y = 3200
 	city_camera.position = Vector2(city_center_x, city_center_y)
-	# 缩放使整个地图适配 1280×720 视口（高度 5120 为限）
-	city_camera.zoom = Vector2(0.14, 0.14)
+	# 缩放使整个地图适配 1280×720 视口
+	city_camera.zoom = Vector2(0.18, 0.18)
 
 	# 初始化城市管理器
 	if not city_manager:
