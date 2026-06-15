@@ -105,7 +105,7 @@ func _generate_terrain():
 	terrain_gen.queue_free()
 
 func _generate_terrain_texture():
-	# 使用等距（Isometric）渲染器替代平面纹理
+	# 使用等距渲染器
 	if not iso_renderer:
 		return
 	if not grid_map:
@@ -361,12 +361,7 @@ func _handle_game_input(event):
 		return
 
 	var world_pos = _get_world_position(event)
-	# 使用等距坐标转换（如果 iso_renderer 可用）
-	var cell_pos = Vector2i.ZERO
-	if iso_renderer and iso_renderer.has_method("world_to_grid"):
-		cell_pos = iso_renderer.world_to_grid(world_pos)
-	else:
-		cell_pos = grid_map.world_to_grid(world_pos)
+	var cell_pos = grid_map.world_to_grid(world_pos)
 
 	# 检查是否在地图范围内
 	if cell_pos.x < 0 or cell_pos.x >= GRID_WIDTH or cell_pos.y < 0 or cell_pos.y >= GRID_HEIGHT:

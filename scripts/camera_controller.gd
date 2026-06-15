@@ -12,7 +12,7 @@ const FRICTION := 0.92
 const DRAG_THRESHOLD := 5.0
 
 ## 地图边界
-var map_bounds: Rect2 = Rect2(0, 0, 7680, 5120)  # 240×32 × 160×32
+var map_bounds: Rect2 = Rect2(-5120, -100, 14000, 7000)  # 等距地图范围
 var _dragging := false
 var _prev_mouse_pos := Vector2.ZERO
 var _drag_start_pos := Vector2.ZERO
