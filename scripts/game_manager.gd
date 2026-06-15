@@ -76,6 +76,19 @@ const BUILDING_TEXTURES := {
 	3002: {"texture": "fire_station", "label": "消防", "cost": 700},
 	3003: {"texture": "hospital", "label": "医院", "cost": 1200},
 	3004: {"texture": "police", "label": "警局", "cost": 900},
+	# 防御建筑
+	4000: {"texture": "wall", "label": "城墙", "cost": 50},
+	4001: {"texture": "cannon", "label": "加农炮", "cost": 800},
+	4002: {"texture": "archer_tower", "label": "箭塔", "cost": 1000},
+	4003: {"texture": "wizard_tower", "label": "法师塔", "cost": 1500},
+	4004: {"texture": "mortar", "label": "迫击炮", "cost": 2000},
+	# 资源建筑
+	5000: {"texture": "gold_mine", "label": "金矿", "cost": 150},
+	5001: {"texture": "elixir_collector", "label": "圣水瓶", "cost": 200},
+	5002: {"texture": "storage", "label": "仓库", "cost": 300},
+	# 兵营
+	6000: {"texture": "barracks", "label": "兵营", "cost": 1000},
+	6001: {"texture": "camp", "label": "军营", "cost": 500},
 }
 
 ## TileMap 源 ID（每个图层只有一个 source，ID 固定为 0）
@@ -463,6 +476,15 @@ func _handle_tool_input(event, cell_pos: Vector2i):
 			_handle_building_placement(event, cell_pos, v)
 		# 科技建筑 (3000~3004)
 		3000, 3001, 3002, 3003, 3004:
+			_handle_building_placement(event, cell_pos, v)
+		# 防御建筑 (4000~4004)
+		4000, 4001, 4002, 4003, 4004:
+			_handle_building_placement(event, cell_pos, v)
+		# 资源建筑 (5000~5002)
+		5000, 5001, 5002:
+			_handle_building_placement(event, cell_pos, v)
+		# 兵营 (6000~6001)
+		6000, 6001:
 			_handle_building_placement(event, cell_pos, v)
 		200:  # Remove
 			_handle_remove_input(event, cell_pos)

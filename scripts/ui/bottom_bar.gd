@@ -3,11 +3,14 @@ extends ColorRect
 
 signal main_category_selected(category_id: int)
 
-## 三大主类别
+## 六大主类别
 enum Category {
 	BASIC = 0,    # 基本民生
 	PUBLIC = 1,   # 公共
 	TECH = 2,     # 科技
+	DEFENSE = 3,  # 防御
+	RESOURCES = 4, # 资源
+	ARMY = 5,     # 兵营
 }
 
 var _gm: Node = null
@@ -18,6 +21,9 @@ const CATEGORIES := [
 	{"icon": "⚒️", "label": "基本民生", "id": Category.BASIC},
 	{"icon": "🏙️", "label": "公共", "id": Category.PUBLIC},
 	{"icon": "🔬", "label": "科技", "id": Category.TECH},
+	{"icon": "🛡️", "label": "防御", "id": Category.DEFENSE},
+	{"icon": "💎", "label": "资源", "id": Category.RESOURCES},
+	{"icon": "⚔️", "label": "兵营", "id": Category.ARMY},
 ]
 
 func _ready():
@@ -101,6 +107,34 @@ func get_variants_for_category(cat_id: int) -> Dictionary:
 					{"texture_file": "fire_station", "label": "消防", "id": 3002, "cost": 700},
 					{"texture_file": "hospital", "label": "医院", "id": 3003, "cost": 1200},
 					{"texture_file": "police", "label": "警局", "id": 3004, "cost": 900},
+				]
+			}
+		Category.DEFENSE:
+			return {
+				"title": "防御 - 选择建筑",
+				"variants": [
+					{"texture_file": "wall", "label": "城墙", "id": 4000, "cost": 50},
+					{"texture_file": "cannon", "label": "加农炮", "id": 4001, "cost": 800},
+					{"texture_file": "archer_tower", "label": "箭塔", "id": 4002, "cost": 1000},
+					{"texture_file": "wizard_tower", "label": "法师塔", "id": 4003, "cost": 1500},
+					{"texture_file": "mortar", "label": "迫击炮", "id": 4004, "cost": 2000},
+				]
+			}
+		Category.RESOURCES:
+			return {
+				"title": "资源 - 选择建筑",
+				"variants": [
+					{"texture_file": "gold_mine", "label": "金矿", "id": 5000, "cost": 150},
+					{"texture_file": "elixir_collector", "label": "圣水瓶", "id": 5001, "cost": 200},
+					{"texture_file": "storage", "label": "仓库", "id": 5002, "cost": 300},
+				]
+			}
+		Category.ARMY:
+			return {
+				"title": "兵营 - 选择建筑",
+				"variants": [
+					{"texture_file": "barracks", "label": "兵营", "id": 6000, "cost": 1000},
+					{"texture_file": "camp", "label": "军营", "id": 6001, "cost": 500},
 				]
 			}
 	return {"title": "", "variants": []}
