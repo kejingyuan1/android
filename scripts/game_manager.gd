@@ -449,6 +449,8 @@ func _handle_game_input(event):
 
 	# 工具模式
 	if _current_tool >= 0 or _current_variant >= 0:
+		if _is_press_event(event):
+			print("[ROAD] Tool active v=", _current_variant, " t=", _current_tool, " @", cell_pos)
 		_handle_tool_input(event, cell_pos)
 		# mouse motion 时更新虚影位置
 		if event is InputEventMouseMotion and _current_variant >= 0:
@@ -481,6 +483,8 @@ func _get_world_position(event) -> Vector2:
 func _handle_tool_input(event, cell_pos: Vector2i):
 	# 优先使用 _current_variant（新建筑系统），回退到 _current_tool（旧道路/分区系统）
 	var v = _current_variant if _current_variant >= 0 else _current_tool
+	if _is_press_event(event):
+		print("[ROAD] _handle_tool_input v=", v)
 	match v:
 		0, 1, 2:  # Road variants
 			_handle_road_input(event, cell_pos, v)
@@ -522,12 +526,14 @@ func _handle_tool_input(event, cell_pos: Vector2i):
 
 func _handle_road_input(event, cell_pos: Vector2i, road_type: int = 0):
 	if _is_press_event(event):
+		print("[ROAD] PRESS @", cell_pos, " type=", road_type)
 		road_system.start_draw(cell_pos, road_type)
 		_update_cell_visual(cell_pos.x, cell_pos.y)
 		_is_dragging = true
 		var road_names = ["土路", "沥青路", "高速路"]
 		_show_toast("🛣️ 开始铺设 " + road_names[road_type] + " - 拖拽延伸，松手结束")
 	elif _is_release_event(event):
+		print("[ROAD] RELEASE drag=", _is_dragging)
 		if _is_dragging:
 			road_system.end_draw()
 			_is_dragging = false
