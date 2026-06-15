@@ -1,13 +1,10 @@
-# TopBar.gd — 顶部状态栏
-# 显示金钱、人口、游戏速度控制、时间/世界地图切换
-
+# TopBar.gd — 顶部状态栏（资源+人口+速度控制+世界地图）
 extends ColorRect
 
 var _gm: Node = null
+var _labels = {}
 
 ## UI 元素引用
-var _money_label: Label = null
-var _pop_label: Label = null
 var _speed_buttons: Array = []
 var _speed_indicators: Array = []
 var _world_map_btn: Button = null  # 太阳/月亮按钮，点击返回世界地图
@@ -37,31 +34,28 @@ func _create_ui():
 	_world_map_btn.connect("pressed", Callable(self, "_on_world_map_pressed"))
 	hbox.add_child(_world_map_btn)
 
-	# 货币
-	var money_icon = Label.new()
-	money_icon.text = "💰"
-	money_icon.custom_minimum_size = Vector2(28, 52)
-	hbox.add_child(money_icon)
+	# 资源数据
+	var resources = [
+		{"icon": "💰", "key": "money"},
+		{"icon": "💧", "key": "elixir"},
+		{"icon": "🪵", "key": "wood"},
+		{"icon": "🪨", "key": "stone"},
+		{"icon": "👥", "key": "population"},
+	]
 
-	_money_label = Label.new()
-	_money_label.text = "100,000"
-	_money_label.custom_minimum_size = Vector2(100, 52)
-	_money_label.add_theme_color_override("font_color", Color(0.9, 0.85, 0.3))
-	_money_label.add_theme_font_size_override("font_size", 18)
-	hbox.add_child(_money_label)
+	for res in resources:
+		var container = VBoxContainer.new()
+		container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-	# 人口
-	var pop_icon = Label.new()
-	pop_icon.text = "👥"
-	pop_icon.custom_minimum_size = Vector2(28, 52)
-	hbox.add_child(pop_icon)
+		var label = Label.new()
+		label.text = res.icon + " 0"
+		label.add_theme_color_override("font_color", Color(1, 1, 1))
+		label.add_theme_font_size_override("font_size", 14)
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		container.add_child(label)
+		_labels[res.key] = label
 
-	_pop_label = Label.new()
-	_pop_label.text = "0"
-	_pop_label.custom_minimum_size = Vector2(80, 52)
-	_pop_label.add_theme_color_override("font_color", Color(1, 1, 1))
-	_pop_label.add_theme_font_size_override("font_size", 18)
-	hbox.add_child(_pop_label)
+		hbox.add_child(container)
 
 	# 弹性空间
 	var spacer = Control.new()
@@ -96,15 +90,6 @@ func _create_ui():
 	save_btn.connect("pressed", Callable(self, "_on_save_pressed"))
 	hbox.add_child(save_btn)
 
-func _ready_after_gm():
-	if _gm:
-		_gm.connect("money_changed", Callable(self, "_on_money_changed"))
-		_on_money_changed(_gm.economy.money)
-
-func _on_money_changed(amount: float):
-	if _money_label:
-		_money_label.text = _format_money(amount)
-
 func _on_speed_pressed(speed_idx: int):
 	if _gm:
 		_gm.set_speed(speed_idx)
@@ -122,24 +107,38 @@ func _update_speed_highlight(active_idx: int):
 
 ## 更新人口显示
 func update_population(pop: int):
-	if _pop_label:
-		_pop_label.text = str(pop)
-
-func _format_money(amount: float) -> String:
-	if amount >= 10000:
-		return "%d" % int(amount)
-	elif amount >= 1000:
-		return "%.1fK" % (amount / 1000.0)
-	return "%d" % int(amount)
+	_update_label("population", "👥", pop)
 
 func _process(delta):
 	if not _gm:
 		_gm = get_node("/root/Main/GameManager")
-		if _gm:
-			_ready_after_gm()
 
 	# 更新时间系统
 	_update_time(delta)
+
+	if not _gm:
+		return
+
+	# 更新资源显示
+	if _gm.economy:
+		_update_label("money", "💰", int(_gm.economy.money))
+		_update_label("wood", "🪵", int(_gm.economy.wood))
+		_update_label("stone", "🪨", int(_gm.economy.stone))
+
+	# 更新圣水（从资源建筑中获取）
+	var elixir_amount = 0
+	if _gm.has_method("get_total_elixir"):
+		elixir_amount = _gm.get_total_elixir()
+	_update_label("elixir", "💧", elixir_amount)
+
+	# 人口
+	if _gm.building_system:
+		var pop = _gm.building_system.get_residential_population()
+		_update_label("population", "👥", pop)
+
+func _update_label(key, icon, value):
+	if _labels.has(key):
+		_labels[key].text = icon + " " + str(value)
 
 ## 更新游戏内时间
 func _update_time(delta):

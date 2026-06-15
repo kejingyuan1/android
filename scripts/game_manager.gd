@@ -963,6 +963,14 @@ func _update_resource_production():
 					"stone":
 						economy.add_stone(amount)
 
+## 获取所有圣水瓶中可收集的圣水总量
+func get_total_elixir():
+	var total = 0
+	for child in building_container.get_children():
+		if child.has_method("get_collectable_amount") and "resource_type" in child and child.resource_type == "elixir":
+			total += child.get_collectable_amount()
+	return total
+
 ## 查找单元格对应的 variant_id
 func _get_variant_for_cell(cell) -> int:
 	if not cell or not cell.has_building:
