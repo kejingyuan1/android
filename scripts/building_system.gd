@@ -113,9 +113,6 @@ func _try_upgrade_building(cell) -> bool:
 	var current_level = cell.building_level
 	if current_level >= 3:
 		return false
-	var upgrade_chance = 0.1 * (1.0 / current_level)
-	if randf() > upgrade_chance:
-		return false
 	var total_pop = _get_total_population()
 	var level_req = current_level * 50
 	if total_pop < level_req:
@@ -129,18 +126,32 @@ func _try_upgrade_building(cell) -> bool:
 	var cost = BUILD_COST * UPGRADE_COST_MULTIPLIER * current_level
 	if not _economy.can_afford(cost):
 		return false
-	if not _economy.spend(cost, "????"):
-		return false
-	cell.building_level = current_level + 1
-	if cell.building_ref and is_instance_valid(cell.building_ref) and cell.building_ref.has_method("update_level"):
-		cell.building_ref.update_level(cell.building_level)
+
+	# 使用工人队列升级
+	var gm = _game_manager
+	if gm and gm.has_method("worker_sys") and gm.worker_sys:
+		var build_time = _get_upgrade_time(cell.building_level)
+		if gm.worker_sys.add_to_queue(cell.x, cell.y, cell.terrain, true, build_time):
+			_economy.spend(cost, "建筑升级")
+			# 创建升级进度条
+			_create_upgrade_progress(cell)
+			return true
+		else:
+			return false  # 队列满
 	else:
-		var bld = _create_building_node(cell.x, cell.y, cell.terrain, cell.building_level)
-		cell.building_ref = bld
-		cell.has_building = true
-	if _game_manager and _game_manager.has_method("_update_cell_visual"):
-		_game_manager._update_cell_visual(cell.x, cell.y)
-	return true
+		# 回退到原来的直接升级
+		if not _economy.spend(cost, "建筑升级"):
+			return false
+		cell.building_level = current_level + 1
+		if cell.building_ref and is_instance_valid(cell.building_ref) and cell.building_ref.has_method("update_level"):
+			cell.building_ref.update_level(cell.building_level)
+		else:
+			var bld = _create_building_node(cell.x, cell.y, cell.terrain, cell.building_level)
+			cell.building_ref = bld
+			cell.has_building = true
+		if _game_manager and _game_manager.has_method("_update_cell_visual"):
+			_game_manager._update_cell_visual(cell.x, cell.y)
+		return true
 
 func _create_building_node(gx, gy, zone_type, level, size_x = 1, size_y = 1):
 	var node = Node2D.new()
@@ -186,6 +197,24 @@ func _get_zone_base_population(zone_type) -> int:
 		3: return 5
 		4: return 3
 	return 0
+
+func _get_upgrade_time(level):
+	match level:
+		1: return 30.0   # 1→2 需要30秒
+		2: return 120.0  # 2→3 需要2分钟
+		_: return 300.0  # 最高级需要5分钟
+
+func _create_upgrade_progress(cell):
+	if not _building_container:
+		return
+	var ref_node = cell.building_ref
+	if not ref_node or not is_instance_valid(ref_node):
+		return
+	var progress = preload("res://scripts/ui/upgrade_progress.gd").new()
+	progress.setup(ref_node, cell.x, cell.y)
+	progress.position = ref_node.position
+	_building_container.add_child(progress)
+	progress.show()
 
 func get_residential_population() -> int:
 	var total = 0

@@ -1108,6 +1108,10 @@ func _process(delta):
 
 	if worker_sys:
 		worker_sys.process(delta)
+		# 更新建筑上的进度条
+		for child in building_container.get_children():
+			if child.has_method("update_progress"):
+				child.update_progress(worker_sys.get_queue_progress(child._building_cx, child._building_cy))
 
 func _run_sim_tick():
 	# 1. 计算 RCI 需求
@@ -1343,6 +1347,11 @@ func _on_worker_job_completed(cx, cy, variant_id, is_upgrade):
 			if cell.building_ref and cell.building_ref.has_method("update_level"):
 				cell.building_ref.update_level(cell.building_level)
 		_show_toast("⬆️ 建筑已升级到 " + str(cell.building_level if cell else "?"))
+		# 移除升级进度条
+		for child in building_container.get_children():
+			if child.has_method("update_progress") and child._building_cx == cx and child._building_cy == cy:
+				child.queue_free()
+				break
 	else:
 		# 新建完成 -> 调用现有的 _place_building_at 逻辑
 		_show_toast("✅ 建造完成！")
