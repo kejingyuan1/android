@@ -471,13 +471,15 @@ func _handle_tool_input(event, cell_pos: Vector2i):
 
 func _handle_road_input(event, cell_pos: Vector2i, road_type: int = 0):
 	if _is_press_event(event):
+		print("[ROAD_DEBUG] PRESS road at (", cell_pos.x, ",", cell_pos.y, ") type=", road_type)
 		road_system.start_draw(cell_pos, road_type)
+		print("[ROAD_DEBUG] grid_map terrain=", grid_map.get_cell(cell_pos.x, cell_pos.y).terrain if grid_map.get_cell(cell_pos.x, cell_pos.y) else "null")
 		_update_cell_visual(cell_pos.x, cell_pos.y)
 		_is_dragging = true
-		# 道路铺设提示
 		var road_names = ["土路", "沥青路", "高速路"]
 		_show_toast("🛣️ 开始铺设 " + road_names[road_type] + " - 拖拽延伸，松手结束")
 	elif _is_release_event(event):
+		print("[ROAD_DEBUG] RELEASE _is_dragging=", _is_dragging)
 		if _is_dragging:
 			road_system.end_draw()
 			_is_dragging = false
@@ -862,7 +864,9 @@ func _update_cell_visual(x: int, y: int):
 	var pos = Vector2i(x, y)
 	# 等距模式下使用 IsoRenderer 渲染道路
 	if cell.terrain == grid_map.TerrainType.ROAD:
+		print("[ROAD_DEBUG] _update_cell_visual ROAD at (", x, ",", y, ") road_type=", cell.road_type)
 		if iso_renderer and iso_renderer.has_method("update_road"):
+			print("[ROAD_DEBUG]   -> calling iso_renderer.update_road")
 			iso_renderer.update_road(x, y, cell.road_type if cell.road_type < 3 else 0)
 		else:
 			road_map_layer.set_cell(pos)
