@@ -27,7 +27,7 @@ func take_damage(dmg):
 	hp -= dmg
 	# 显示伤害数字
 	var dn = preload("res://scripts/combat/damage_number.gd").new()
-	dn.show(position, dmg)
+	dn.show_damage(position, dmg)
 	get_parent().add_child(dn)
 	if hp <= 0:
 		die()
