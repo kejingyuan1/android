@@ -53,15 +53,15 @@ func generate() -> ImageTexture:
 
 	for py in range(TEX_H):
 		for px in range(TEX_W):
-		var gx = px / PIXELS_PER_CELL
-		var gy = py / PIXELS_PER_CELL
-		if gx >= MAP_WIDTH or gy >= MAP_HEIGHT:
-			image.set_pixel(px, py, Color(0.35, 0.6, 0.2))
-			continue
+			var gx = px / PIXELS_PER_CELL
+			var gy = py / PIXELS_PER_CELL
+			if gx >= MAP_WIDTH or gy >= MAP_HEIGHT:
+				image.set_pixel(px, py, Color(0.35, 0.6, 0.2))
+				continue
 
-		# 格内偏移（0~1），用于双线性插值
-		var ppx = (px % PIXELS_PER_CELL) / float(PIXELS_PER_CELL)
-		var ppy = (py % PIXELS_PER_CELL) / float(PIXELS_PER_CELL)
+			# 格内偏移（0~1），用于双线性插值
+			var ppx = (px % PIXELS_PER_CELL) / float(PIXELS_PER_CELL)
+			var ppy = (py % PIXELS_PER_CELL) / float(PIXELS_PER_CELL)
 
 			var base = terrain_colors[gy][gx]
 

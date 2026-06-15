@@ -120,9 +120,9 @@ func _generate_terrain_texture():
 	if tex:
 		var sprite = Sprite2D.new()
 		sprite.texture = tex
-		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR  # 噪声纹理平滑过渡
-		# 纹理分辨率降低到 PIXELS_PER_CELL=16，需缩放 2x 匹配世界尺寸
-		sprite.scale = Vector2(2.0, 2.0)
+		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # 像素风清晰边缘
+		# 纹理分辨率 = PIXELS_PER_CELL=24，缩放 = CELL_SIZE(32) / 24
+		sprite.scale = Vector2(32.0 / 24.0, 32.0 / 24.0)
 		sprite.centered = false
 		sprite.position = Vector2(0, 0)
 		sprite.z_index = 0
