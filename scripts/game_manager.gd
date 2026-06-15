@@ -1394,15 +1394,20 @@ func _get_build_time(variant_id, cost):
 	# 基础建造时间 = 成本 / 100 秒（上限300秒）
 	return clamp(float(cost) / 100.0 * 60.0, 5.0, 300.0)
 
-## 调试：生成测试用敌方单位
+## 调试：生成测试用敌方单位（多波次）
 func _spawn_test_enemy(target_world_pos):
-	var enemy = preload("res://scripts/combat/enemy_unit.gd").new()
-	var start_pos = iso_renderer.grid_to_world(0, 0) if iso_renderer else Vector2.ZERO
-	enemy.setup(start_pos, target_world_pos, 200, 5, 60.0)
-	# 加到世界场景
-	var game_world = get_parent().get_node("GameWorld") if get_parent().has_node("GameWorld") else null
-	if game_world:
-		game_world.add_child(enemy)
-	else:
-		get_parent().add_child(enemy)
-	_show_toast("调试敌人已生成")
+	# 从地图边缘多个位置生成敌人
+	var spawn_points = [
+		iso_renderer.grid_to_world(0, 0) if iso_renderer else Vector2(0, 0),
+		iso_renderer.grid_to_world(120, 0) if iso_renderer else Vector2(3840, 0),
+		iso_renderer.grid_to_world(0, 80) if iso_renderer else Vector2(0, 2560),
+	]
+	for sp in spawn_points:
+		var enemy = preload("res://scripts/combat/enemy_unit.gd").new()
+		enemy.setup(sp, target_world_pos, 200 + randi() % 100, 5, 50.0 + randi() % 30)
+		var game_world = get_parent().get_node("GameWorld") if get_parent().has_node("GameWorld") else null
+		if game_world:
+			game_world.add_child(enemy)
+		else:
+			get_parent().add_child(enemy)
+	_show_toast("调试敌人 × 3 已生成")

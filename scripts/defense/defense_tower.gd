@@ -72,6 +72,7 @@ func _try_attack():
     _fire_at(target)
 
 func _fire_at(target):
-    # 由子类重写
-    if target.has_method("take_damage"):
-        target.take_damage(damage)
+    # 发射投射物
+    var proj = preload("res://scripts/combat/projectile.gd").new()
+    proj.setup(position, target, damage, 300.0)
+    get_parent().add_child(proj)
