@@ -33,6 +33,7 @@ var rci_bar: Node
 var bottom_bar: Node
 var info_card: Node
 var sub_menu: Node
+var _building_info_panel = null
 
 ## RCI 需求
 class RCIDemand:
@@ -263,6 +264,10 @@ func _init_ui():
 		sub_menu.connect("variant_selected", Callable(self, "_on_variant_selected"))
 	if bottom_bar and bottom_bar.has_signal("main_category_selected"):
 		bottom_bar.connect("main_category_selected", Callable(self, "_on_main_category_selected"))
+	
+	# 创建建筑信息面板
+	_building_info_panel = preload("res://scripts/ui/building_info_panel.gd").new()
+	add_child(_building_info_panel)
 
 func _create_tilesets():
 	# 道路 TileSet — 4 种道路贴图（水平/垂直/交叉/单格）
@@ -1065,6 +1070,21 @@ func _handle_normal_tap(cell_pos: Vector2i):
 
 	if cell and cell.has_building and cell.building_ref:
 		info_card.show_building_info(cell_pos, cell)
+		# 建筑信息面板（增强版）
+		# 资源建筑自动收集
+		if cell.building_ref and cell.building_ref.has_method("collect_all"):
+			var collected = cell.building_ref.collect_all()
+			if collected > 0:
+				if cell.building_ref.has_method("resource_type") or ("resource_type" in cell.building_ref):
+					var rtype = ""
+					if cell.building_ref.has_method("get"):
+						pass
+					# 默认加入金币
+				economy.add_money(collected)
+				_show_toast("💰 收集了 " + str(collected) + " 金币")
+		# 显示建筑信息
+		if _building_info_panel:
+			_building_info_panel.show_building_info(cell)
 	else:
 		info_card.hide()
 

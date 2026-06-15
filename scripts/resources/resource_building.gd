@@ -40,6 +40,8 @@ func setup(gx, gy, lv = 1):
     _production_timer.timeout.connect(_on_produce)
     add_child(_production_timer)
     _production_timer.start()
+    # 加入资源建筑组，供敌人 AI 识别
+    add_to_group("resource_buildings")
 
 func _get_texture_name():
     return "gold_mine"  # 子类覆盖

@@ -45,6 +45,8 @@ func setup(gx, gy, lv = 1):
     # 连接信号
     _detection.body_entered.connect(_on_enemy_entered)
     _detection.body_exited.connect(_on_enemy_exited)
+    # 加入防御建筑组，供敌人 AI 识别
+    add_to_group("defense_towers")
 
 func _get_texture_name():
     return "cannon"  # 子类覆盖

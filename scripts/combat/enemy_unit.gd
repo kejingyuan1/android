@@ -7,6 +7,7 @@ var defense = 5
 var speed = 60.0  # 像素/秒
 var target_pos = Vector2.ZERO
 var alive = true
+var _attack_target = Vector2.ZERO
 
 func _ready():
     add_to_group("enemies")
@@ -43,12 +44,34 @@ func _process(delta):
         return
     if target_pos == Vector2.ZERO:
         return
+    # 寻找攻击目标
+    if _attack_target == Vector2.ZERO or position.distance_to(_attack_target) < 10.0:
+        _find_new_target()
     # 向目标移动
-    var dir = (target_pos - position).normalized()
-    position += dir * speed * delta
+    if _attack_target != Vector2.ZERO:
+        var dir = (_attack_target - position).normalized()
+        position += dir * speed * delta
+    else:
+        var dir = (target_pos - position).normalized()
+        position += dir * speed * delta
     # 到达目标
     if position.distance_to(target_pos) < 10.0:
         _on_reach_target()
+
+func _find_new_target():
+    # 查找最近的防御建筑或资源建筑
+    var nearest = null
+    var min_dist = INF
+    var parent = get_parent()
+    if parent:
+        for child in parent.get_children():
+            if child.is_in_group("defense_towers") or child.is_in_group("resource_buildings"):
+                var d = position.distance_squared_to(child.position)
+                if d < min_dist:
+                    min_dist = d
+                    nearest = child
+    if nearest:
+        _attack_target = nearest.position
 
 func _on_reach_target():
     # 到达目标后自爆/攻击建筑（简化版）
