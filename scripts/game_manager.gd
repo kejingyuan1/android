@@ -887,6 +887,12 @@ func _is_drag_event(event) -> bool:
 	return event is InputEventMouseMotion or event is InputEventScreenDrag
 
 func _handle_normal_tap(cell_pos: Vector2i):
+	# Shift+点击生成敌人用于测试
+	if Input.is_key_pressed(KEY_SHIFT):
+		var world_pos = iso_renderer.grid_to_world(cell_pos.x, cell_pos.y) if iso_renderer else Vector2(cell_pos.x * CELL_SIZE, cell_pos.y * CELL_SIZE)
+		_spawn_test_enemy(world_pos)
+		return
+
 	var cell = grid_map.get_cell(cell_pos.x, cell_pos.y)
 	if cell:
 		# 高亮显示选中格
@@ -1196,3 +1202,16 @@ func try_upgrade_building(cell_pos: Vector2i, cell):
 	if building_system and building_system.has_method("_try_upgrade_building"):
 		building_system._try_upgrade_building(cell)
 		_update_cell_visual(cell_pos.x, cell_pos.y)
+
+## 调试：生成测试用敌方单位
+func _spawn_test_enemy(target_world_pos):
+	var enemy = preload("res://scripts/combat/enemy_unit.gd").new()
+	var start_pos = iso_renderer.grid_to_world(0, 0) if iso_renderer else Vector2.ZERO
+	enemy.setup(start_pos, target_world_pos, 200, 5, 60.0)
+	# 加到世界场景
+	var game_world = get_parent().get_node("GameWorld") if get_parent().has_node("GameWorld") else null
+	if game_world:
+		game_world.add_child(enemy)
+	else:
+		get_parent().add_child(enemy)
+	_show_toast("调试敌人已生成")
