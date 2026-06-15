@@ -48,6 +48,8 @@ func update_road(gx, gy, road_type):
 	if _road_container == null:
 		return
 	if _road_sheets.size() == 0:
+		# 回退：创建一个彩色菱形确保至少能看到
+		_create_fallback_road(gx, gy, road_type)
 		return
 	
 	var key = _get_road_sheet_key(road_type)
@@ -69,11 +71,40 @@ func update_road(gx, gy, road_type):
 		_road_container.add_child(sprite)
 		_road_sprites[sprite_key] = sprite
 	
-	var img = sheet.get_image()
-	if img != null:
-		var sub = img.get_region(Rect2i(atlas_x, atlas_y, TILE_W, TILE_H))
-		if sub != null:
-			sprite.texture = ImageTexture.create_from_image(sub)
+	# 使用 AtlasTexture 避免 get_image() 返回 null 的问题
+	var atlas = AtlasTexture.new()
+	atlas.atlas = sheet
+	atlas.region = Rect2(atlas_x, atlas_y, TILE_W, TILE_H)
+	sprite.texture = atlas
+	sprite.position = grid_to_world(gx, gy)
+
+func _create_fallback_road(gx, gy, road_type):
+	# 备选方案：程序生成彩色菱形
+	var sprite_key = str(gx) + "_" + str(gy)
+	var sprite = _road_sprites.get(sprite_key)
+	if sprite == null:
+		sprite = Sprite2D.new()
+		sprite.name = "Road_fallback_" + sprite_key
+		sprite.centered = true
+		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		_road_container.add_child(sprite)
+		_road_sprites[sprite_key] = sprite
+	
+	# 生成彩色菱形纹理
+	var colors = [Color(0.8, 0.6, 0.2, 0.9), Color(0.3, 0.3, 0.3, 0.9), Color(0.15, 0.15, 0.15, 0.9)]
+	var col = colors[road_type % 3]
+	var img = Image.create(TILE_W, TILE_H, false, Image.FORMAT_RGBA8)
+	for y in range(TILE_H):
+		for x in range(TILE_W):
+			var cx = TILE_W / 2
+			var cy = TILE_H / 2
+			var dx = abs(x - cx) / float(cx)
+			var dy = abs(y - cy) / float(cy)
+			if dx + dy <= 1.0:
+				img.set_pixel(x, y, col)
+			else:
+				img.set_pixel(x, y, Color(0, 0, 0, 0))
+	sprite.texture = ImageTexture.create_from_image(img)
 	sprite.position = grid_to_world(gx, gy)
 
 func clear_road(gx, gy):
