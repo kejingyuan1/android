@@ -20,6 +20,7 @@ var service_system: Node
 ## 节点引用（使用 var 声明，在 _init_tilemaps 中手动赋值）
 var camera: Node
 var grid_renderer: Node2D
+var iso_renderer: Node2D
 var road_map_layer: TileMapLayer
 var zone_map_layer: TileMapLayer
 var highlight_map_layer: TileMapLayer
