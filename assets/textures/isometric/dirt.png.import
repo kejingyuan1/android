@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://mn83uu1y86kruswn0vju"
-path="res://.godot/imported/dirt.png-5b54c1a8ee3713b5cb3a90c12b0bb831.ctex"
+uid="uid://c7cyg4wewik6m"
+path="res://.godot/imported/dirt.png-ff8c5b07e9583a597760954b01f7317e.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/isometric/dirt.png"
-dest_files=["res://.godot/imported/dirt.png-5b54c1a8ee3713b5cb3a90c12b0bb831.ctex"]
+dest_files=["res://.godot/imported/dirt.png-ff8c5b07e9583a597760954b01f7317e.ctex"]
 
 [params]
 

@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://r2kgszm3stxxws62gc87"
-path="res://.godot/imported/forest.png-bdefee4fb5c82fffcbb84f9e6af7377b.ctex"
+uid="uid://bi4dxc2v15an7"
+path="res://.godot/imported/forest.png-47ead047d8342568f56f097df06b6535.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/isometric/forest.png"
-dest_files=["res://.godot/imported/forest.png-bdefee4fb5c82fffcbb84f9e6af7377b.ctex"]
+dest_files=["res://.godot/imported/forest.png-47ead047d8342568f56f097df06b6535.ctex"]
 
 [params]
 

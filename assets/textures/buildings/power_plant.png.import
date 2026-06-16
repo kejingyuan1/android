@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://8r1m6ccxjywo8c6cacl4"
-path="res://.godot/imported/power_plant.png-2ef5450579d0868b9e5c96dceb962bb2.ctex"
+uid="uid://bslm58iwtw6lj"
+path="res://.godot/imported/power_plant.png-ac74fdc27bc4bf8b3fcea57a24e03885.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,11 +11,30 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/buildings/power_plant.png"
-dest_files=["res://.godot/imported/power_plant.png-2ef5450579d0868b9e5c96dceb962bb2.ctex"]
+dest_files=["res://.godot/imported/power_plant.png-ac74fdc27bc4bf8b3fcea57a24e03885.ctex"]
 
 [params]
 
 compress/mode=0
+compress/high_quality=false
+compress/lossy_quality=0.7
+compress/uastc_level=0
+compress/rdo_quality_loss=0.0
+compress/hdr_compression=1
+compress/normal_map=0
+compress/channel_pack=0
+mipmaps/generate=false
+mipmaps/limit=-1
+roughness/mode=0
+roughness/src_normal=""
+process/channel_remap/red=0
+process/channel_remap/green=1
+process/channel_remap/blue=2
+process/channel_remap/alpha=3
 process/fix_alpha_border=false
 process/premult_alpha=false
-mipmaps/generate=false
+process/normal_map_invert_y=false
+process/hdr_as_srgb=false
+process/hdr_clamp_exposure=false
+process/size_limit=0
+detect_3d/compress_to=1

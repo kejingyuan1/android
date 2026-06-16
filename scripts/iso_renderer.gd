@@ -74,8 +74,8 @@ func _render_terrain_texture():
 		var cy := TILE_H / 2.0
 		for y in range(TILE_H):
 			for x in range(TILE_W):
-				var dx := abs(x - cx) / cx
-				var dy := abs(y - cy) / cy
+				var dx := abs(float(x) - cx) / cx
+				var dy := abs(float(y) - cy) / cy
 				if dx + dy <= 1.0:
 					var r := base_color.r + variant_offset + randf_range(-0.02, 0.02)
 					var g := base_color.g + variant_offset + randf_range(-0.02, 0.02)
