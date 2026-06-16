@@ -228,21 +228,10 @@ def main():
             else:
                 img = add_level_upgrades(civ_base, level)
             
-            # 后处理：强制清除右下角水印区域
-            cleared = 0
-            w, h = img.size
-            pixels = img.load()
-            for y in range(max(0, h - 60), h):
-                for x in range(max(0, w - 200), w):
-                    if pixels[x, y][3] > 10:
-                        pixels[x, y] = (0, 0, 0, 0)
-                        cleared += 1
-            
             filename = f"town_hall_{civ}_l{level}.png"
             out_path = os.path.join(out_dir, filename)
             img.save(out_path)
-            detail = f" (清{cleared}px)" if cleared > 0 else ""
-            print(f"  L{level}: {filename} -> {img.size}{detail}")
+            print(f"  L{level}: {filename} -> {img.size}")
 
 if __name__ == "__main__":
     main()
