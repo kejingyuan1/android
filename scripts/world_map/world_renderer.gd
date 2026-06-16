@@ -115,15 +115,24 @@ func place_city_marker(wx: int, wy: int, civ_id: int, city_name: String):
 
 	# 加载文明对应的主城建筑纹理（使用原始 PNG 加载绕过 Godot 导入系统）
 	var tex_path = _get_capital_texture_path(civ_id)
+	print("[TEX_LOAD] 主城标记 FileAccess加载: ", tex_path, " civ_id=", civ_id)
 	var tex = null
 	var png_path = ProjectSettings.globalize_path(tex_path)
+	print("[TEX_LOAD]   全局路径: ", png_path)
 	var file = FileAccess.open(png_path, FileAccess.READ)
 	if file:
 		var buf = file.get_buffer(file.get_length())
 		file.close()
+		print("[TEX_LOAD]   文件大小: ", buf.size(), " 字节")
 		var img = Image.new()
-		if img.load_png_from_buffer(buf) == OK:
+		var load_result = img.load_png_from_buffer(buf)
+		print("[TEX_LOAD]   PNG解码: ", load_result == OK, " 结果码=", load_result)
+		if load_result == OK:
+			print("[TEX_LOAD]   图片尺寸: ", img.get_width(), "x", img.get_height())
 			tex = ImageTexture.create_from_image(img)
+			print("[TEX_LOAD]   ImageTexture创建: ", tex != null)
+	else:
+		print("[TEX_LOAD]   FileAccess.open 失败! 文件不存在或无法读取")
 	print("【T=", Time.get_ticks_msec(), "】纹理加载完成, tex=", tex != null)
 
 	if tex:
@@ -236,8 +245,15 @@ func spawn_ocean_fish(wx: int, wy: int, count: int = 30) -> void:
 	var water_tex_names = ["fish01", "jelly", "star", "seahorse"]
 	var water_textures = []
 	for name in water_tex_names:
-		water_textures.append(load("res://assets/textures/creatures/creature_%s.png" % name))
-	var land_tex = load("res://assets/textures/creatures/creature_bird.png")
+		var creature_path = "res://assets/textures/creatures/creature_%s.png" % name
+		print("[TEX_LOAD] 生物纹理 load(): ", creature_path, " 存在=", ResourceLoader.exists(creature_path))
+		var ct = load(creature_path)
+		print("[TEX_LOAD]   load()结果: ", ct != null, " 尺寸=", ct.get_width() if ct else -1, "x", ct.get_height() if ct else -1)
+		water_textures.append(ct)
+	var land_path = "res://assets/textures/creatures/creature_bird.png"
+	print("[TEX_LOAD] 陆地生物纹理 load(): ", land_path, " 存在=", ResourceLoader.exists(land_path))
+	var land_tex = load(land_path)
+	print("[TEX_LOAD]   load()结果: ", land_tex != null, " 尺寸=", land_tex.get_width() if land_tex else -1, "x", land_tex.get_height() if land_tex else -1)
 
 	var rng = RandomNumberGenerator.new()
 	rng.seed = world_gen.world_seed + 999

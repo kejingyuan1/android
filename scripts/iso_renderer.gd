@@ -21,10 +21,14 @@ func _ready():
 func _preload_road_textures():
 	for rname in ["dirt", "asphalt", "highway"]:
 		var path = "res://assets/textures/roads/iso_%s.png" % rname
+		print("[TEX_LOAD] iso道路纹理预加载: ", path, " 存在=", ResourceLoader.exists(path))
 		if ResourceLoader.exists(path):
 			var tex = load(path)
 			if tex:
+				print("[TEX_LOAD]   加载成功: 尺寸=", tex.get_width(), "x", tex.get_height())
 				_road_sheets[rname] = tex
+			else:
+				print("[TEX_LOAD]   加载失败: load()返回null")
 
 func setup(grid_map_node, _seed_val = 0):
 	_grid_map = grid_map_node
@@ -193,11 +197,17 @@ func _get_or_load_sheet(road_type):
 	if _road_sheets.has(key):
 		return _road_sheets[key]
 	var path = "res://assets/textures/roads/iso_%s.png" % key
+	print("[TEX_LOAD] iso道路贴图按需加载: ", path, " 存在=", ResourceLoader.exists(path))
 	if ResourceLoader.exists(path):
 		var tex = load(path)
 		if tex:
+			print("[TEX_LOAD]   加载成功: 尺寸=", tex.get_width(), "x", tex.get_height())
 			_road_sheets[key] = tex
 			return tex
+		else:
+			print("[TEX_LOAD]   load()返回null")
+	else:
+		print("[TEX_LOAD]   文件不存在")
 	return null
 
 func _create_fallback_road(gx, gy, road_type):
@@ -272,9 +282,14 @@ var _ghost = null
 func init_overlays():
 	_highlight = Sprite2D.new()
 	_highlight.name = "IsoHighlight"
-	var hl_tex = load("res://assets/textures/isometric/highlight.png")
+	var hl_path = "res://assets/textures/isometric/highlight.png"
+	print("[TEX_LOAD] 等距高亮纹理: ", hl_path, " 存在=", ResourceLoader.exists(hl_path))
+	var hl_tex = load(hl_path)
 	if hl_tex:
+		print("[TEX_LOAD]   高亮纹理尺寸: ", hl_tex.get_width(), "x", hl_tex.get_height())
 		_highlight.texture = hl_tex
+	else:
+		print("[TEX_LOAD]   高亮纹理加载失败")
 	_highlight.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_highlight.centered = true
 	_highlight.z_index = 50
@@ -283,9 +298,14 @@ func init_overlays():
 
 	_ghost = Sprite2D.new()
 	_ghost.name = "IsoGhost"
-	var gh_tex = load("res://assets/textures/isometric/ghost.png")
+	var gh_path = "res://assets/textures/isometric/ghost.png"
+	print("[TEX_LOAD] 等距虚影纹理: ", gh_path, " 存在=", ResourceLoader.exists(gh_path))
+	var gh_tex = load(gh_path)
 	if gh_tex:
+		print("[TEX_LOAD]   虚影纹理尺寸: ", gh_tex.get_width(), "x", gh_tex.get_height())
 		_ghost.texture = gh_tex
+	else:
+		print("[TEX_LOAD]   虚影纹理加载失败")
 	_ghost.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_ghost.centered = true
 	_ghost.z_index = 40
@@ -314,7 +334,14 @@ func hide_ghost():
 
 func create_shadow_sprite():
 	var s = Sprite2D.new()
-	s.texture = load("res://assets/textures/isometric/shadow.png") if ResourceLoader.exists("res://assets/textures/isometric/shadow.png") else null
+	var shadow_path = "res://assets/textures/isometric/shadow.png"
+	var shadow_exists = ResourceLoader.exists(shadow_path)
+	print("[TEX_LOAD] 阴影纹理: ", shadow_path, " 存在=", shadow_exists)
+	s.texture = load(shadow_path) if shadow_exists else null
+	if s.texture:
+		print("[TEX_LOAD]   阴影纹理尺寸: ", s.texture.get_width(), "x", s.texture.get_height())
+	else:
+		print("[TEX_LOAD]   阴影纹理加载失败或不存在")
 	s.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	s.centered = true
 	s.z_index = 3

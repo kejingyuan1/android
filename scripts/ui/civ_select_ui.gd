@@ -55,8 +55,10 @@ func _create_ui():
 
 		# 文明背景图
 		var bg_path = "res://assets/textures/civ_bg/civ_bg_" + c.file + ".png"
+		print("[TEX_LOAD] 文明背景纹理: ", bg_path, " 存在=", ResourceLoader.exists(bg_path))
 		var bg_tex = load(bg_path)
 		if bg_tex:
+			print("[TEX_LOAD]   加载成功: 尺寸=", bg_tex.get_width(), "x", bg_tex.get_height())
 			var bg_rect = TextureRect.new()
 			bg_rect.texture = bg_tex
 			bg_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED

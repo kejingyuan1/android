@@ -62,9 +62,12 @@ func _update_texture():
 			tex_path = SPRITE_PATHS["factory"]
 
 	if tex_path == "" or not ResourceLoader.exists(tex_path):
+		print("[TEX_LOAD] building_node 纹理不存在: ", tex_path)
 		return
 
+	print("[TEX_LOAD] building_node 加载纹理: ", tex_path)
 	var tex = load(tex_path)
+	print("[TEX_LOAD]   load()结果: ", tex != null, " 尺寸=", tex.get_width() if tex else -1, "x", tex.get_height() if tex else -1)
 	_sprite.texture = tex
 	_sprite.centered = true
 

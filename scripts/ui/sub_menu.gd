@@ -115,8 +115,12 @@ func _load_texture(texture_file: String) -> Texture2D:
 		return _create_road_texture(texture_file)
 
 	var tex_path = "res://assets/textures/buildings/%s.png" % texture_file
+	print("[TEX_LOAD] 子菜单建筑纹理: ", tex_path, " 存在=", ResourceLoader.exists(tex_path))
 	if ResourceLoader.exists(tex_path):
-		return load(tex_path)
+		var tex = load(tex_path)
+		print("[TEX_LOAD]   加载结果: ", tex != null, " 尺寸=", tex.get_width() if tex else -1, "x", tex.get_height() if tex else -1)
+		return tex
+	print("[TEX_LOAD]   不存在→返回null")
 	return null
 
 ## 为道路类型生成预览纹理（48x48）
@@ -125,8 +129,10 @@ func _create_road_texture(road_type: String) -> Texture2D:
 	# 加载 spritesheet 中的水平道路格作为预览
 	var png_file = road_type.replace("road_", "") + "_sheet.png"
 	var png_path = "res://assets/textures/roads/%s" % png_file
+	print("[TEX_LOAD] 子菜单道路贴图: ", png_path, " 存在=", ResourceLoader.exists(png_path))
 	if ResourceLoader.exists(png_path):
 		var img = load(png_path).get_image()
+		print("[TEX_LOAD]   load()结果: img=", img != null, " 尺寸=", img.get_width() if img else -1, "x", img.get_height() if img else -1)
 		if img:
 			var tile = Image.create(32, 32, false, Image.FORMAT_RGBA8)
 			tile.blit_rect(img, Rect2i(0, 0, 32, 32), Vector2i(0, 0))

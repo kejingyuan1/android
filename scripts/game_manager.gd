@@ -328,11 +328,19 @@ func _create_tilesets():
 ## 加载道路 spritesheet（64x64，包含 4 个 32x32 子图块）
 func _load_road_sheet(sheet_name: String, size: int) -> Texture2D:
 	var path = "res://assets/textures/roads/%s" % sheet_name
+	print("[TEX_LOAD] 尝试加载道路贴图: ", path, " 存在=", ResourceLoader.exists(path))
 	if ResourceLoader.exists(path):
-		var img = load(path).get_image()
-		if img and img.get_width() == size * 2 and img.get_height() == size * 2:
-			return load(path)
+		var loaded = load(path)
+		print("[TEX_LOAD]   load()成功: ", loaded != null, " 类型=", typeof(loaded) if loaded else "null")
+		if loaded:
+			var img = loaded.get_image()
+			if img and img.get_width() == size * 2 and img.get_height() == size * 2:
+				print("[TEX_LOAD]   贴图尺寸匹配: ", img.get_width(), "x", img.get_height())
+				return loaded
+			elif img:
+				print("[TEX_LOAD]   尺寸不匹配: 期望 ", size*2, "x", size*2, " 实际 ", img.get_width(), "x", img.get_height())
 	# 回退
+	print("[TEX_LOAD]   道路贴图回退→程序生成")
 	return _create_road_texture(Color(0.5, 0.5, 0.5), "土路", size)
 
 func _create_road_texture(base_color: Color, road_type: String, size: int) -> Texture2D:
@@ -344,12 +352,16 @@ func _create_road_texture(base_color: Color, road_type: String, size: int) -> Te
 		png_file = "road_highway.png"
 
 	var png_path = "res://assets/textures/roads/%s" % png_file
+	print("[TEX_LOAD] _create_road_texture 尝试加载: ", png_path, " 存在=", ResourceLoader.exists(png_path))
 	if ResourceLoader.exists(png_path):
 		var png_img = load(png_path).get_image()
+		print("[TEX_LOAD]   load()结果: png_img=", png_img != null, " 尺寸=", png_img.get_width() if png_img else -1, "x", png_img.get_height() if png_img else -1)
 		if png_img:
 			if png_img.get_width() != size:
 				png_img.resize(size, size, Image.INTERPOLATE_NEAREST)
-			return ImageTexture.create_from_image(png_img)
+			var result = ImageTexture.create_from_image(png_img)
+			print("[TEX_LOAD]   ImageTexture创建成功")
+			return result
 
 	# 回退：程序生成
 	var img = Image.create(size, size, false, Image.FORMAT_RGBA8)
@@ -691,9 +703,14 @@ func _handle_building_placement(event, cell_pos: Vector2i, variant_id: int):
 		else:
 			# 创建建筑精灵
 			var tex_path = "res://assets/textures/buildings/%s.png" % info.texture
+			print("[TEX_LOAD] 放置建筑纹理: ", tex_path, " 存在=", ResourceLoader.exists(tex_path))
 			if ResourceLoader.exists(tex_path):
 				var sprite = Sprite2D.new()
-				sprite.texture = load(tex_path)
+				var loaded_tex = load(tex_path)
+				print("[TEX_LOAD]   load()结果: tex=", loaded_tex != null)
+				if loaded_tex:
+					print("[TEX_LOAD]   纹理尺寸: ", loaded_tex.get_width(), "x", loaded_tex.get_height())
+				sprite.texture = loaded_tex
 				sprite.centered = true
 				# 等距坐标 + 阴影
 				if iso_renderer and iso_renderer.has_method("grid_to_world"):
@@ -756,10 +773,12 @@ func _update_ghost_position(cell_pos: Vector2i):
 
 	if not _ghost_sprite:
 		var tex_path = "res://assets/textures/buildings/%s.png" % info.texture
+		print("[TEX_LOAD] 虚影纹理: ", tex_path, " 存在=", ResourceLoader.exists(tex_path))
 		if not ResourceLoader.exists(tex_path):
 			return
 		_ghost_sprite = Sprite2D.new()
 		_ghost_sprite.texture = load(tex_path)
+		print("[TEX_LOAD] 虚影纹理加载完成: ", _ghost_sprite.texture != null)
 		_ghost_sprite.centered = true
 		_ghost_sprite.z_index = 50
 		_ghost_sprite.scale = Vector2(0.8, 0.8)
@@ -909,9 +928,12 @@ func _place_building_at(gx: int, gy: int, variant_id: int):
 	else:
 		# 创建建筑精灵
 		var tex_path = "res://assets/textures/buildings/%s.png" % info.texture
+		print("[TEX_LOAD] _place_building_at(移动模式): ", tex_path, " 存在=", ResourceLoader.exists(tex_path))
 		if ResourceLoader.exists(tex_path):
 			var sprite = Sprite2D.new()
-			sprite.texture = load(tex_path)
+			var loaded_tex = load(tex_path)
+			print("[TEX_LOAD]   移动模式 load()结果: tex=", loaded_tex != null, " 尺寸=", loaded_tex.get_width() if loaded_tex else -1, "x", loaded_tex.get_height() if loaded_tex else -1)
+			sprite.texture = loaded_tex
 			sprite.centered = true
 			if iso_renderer and iso_renderer.has_method("grid_to_world"):
 				var iso_pos = iso_renderer.grid_to_world(gx, gy)
@@ -1460,23 +1482,33 @@ func _place_town_hall():
 	var tex_path = "res://assets/textures/buildings/town_hall_%s_l1_v2.png" % civ_name
 	var texture = null
 	var png_path = ProjectSettings.globalize_path(tex_path)
+	print("[TEX_LOAD] 大本营 FileAccess加载: ", tex_path)
+	print("[TEX_LOAD]   全局路径: ", png_path)
 	var file = FileAccess.open(png_path, FileAccess.READ)
 	if file:
-		var buffer = file.get_buffer(file.get_length())
+		var file_size = file.get_length()
+		var buffer = file.get_buffer(file_size)
 		file.close()
+		print("[TEX_LOAD]   文件打开成功, 大小: ", file_size, " 字节")
 		var img = Image.new()
-		if img.load_png_from_buffer(buffer) == OK:
+		var load_result = img.load_png_from_buffer(buffer)
+		print("[TEX_LOAD]   PNG解码: ", load_result == OK, " 结果码=", load_result)
+		if load_result == OK:
+			print("[TEX_LOAD]   图片尺寸: ", img.get_width(), "x", img.get_height())
 			texture = ImageTexture.create_from_image(img)
+			print("[TEX_LOAD]   ImageTexture创建: ", texture != null)
 	
 	if not texture:
 		print("[WARN] 大本营纹理不存在: ", tex_path, "，使用默认建筑纹理")
 		var fallback_path = "res://assets/textures/buildings/house1.png"
+		print("[TEX_LOAD]   尝试回退纹理: ", fallback_path)
 		var fb_file = FileAccess.open(ProjectSettings.globalize_path(fallback_path), FileAccess.READ)
 		if fb_file:
 			var fb_buf = fb_file.get_buffer(fb_file.get_length())
 			fb_file.close()
 			var fb_img = Image.new()
 			if fb_img.load_png_from_buffer(fb_buf) == OK:
+				print("[TEX_LOAD]   回退纹理加载成功: ", fb_img.get_width(), "x", fb_img.get_height())
 				texture = ImageTexture.create_from_image(fb_img)
 	
 	if not texture:
@@ -1489,6 +1521,7 @@ func _place_town_hall():
 	sprite.texture = texture
 	sprite.centered = true
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	print("[TEX_LOAD] 大本营精灵纹理已赋值: tex=", texture != null, " 纹理尺寸=", texture.get_width() if texture else -1, "x", texture.get_height() if texture else -1)
 	
 	# 等距坐标定位
 	if iso_renderer and iso_renderer.has_method("grid_to_world"):
@@ -1538,13 +1571,20 @@ func upgrade_town_hall():
 	# 使用原始 PNG 加载绕过导入缓存
 	var new_texture = null
 	var new_png_path = ProjectSettings.globalize_path(new_tex_path)
+	print("[TEX_LOAD] 大本营升级 FileAccess加载: ", new_tex_path)
+	print("[TEX_LOAD]   全局路径: ", new_png_path)
 	var new_file = FileAccess.open(new_png_path, FileAccess.READ)
 	if new_file:
 		var buf = new_file.get_buffer(new_file.get_length())
 		new_file.close()
+		print("[TEX_LOAD]   文件大小: ", buf.size(), " 字节")
 		var nimg = Image.new()
-		if nimg.load_png_from_buffer(buf) == OK:
+		var load_result = nimg.load_png_from_buffer(buf)
+		print("[TEX_LOAD]   PNG解码: ", load_result == OK, " 结果码=", load_result)
+		if load_result == OK:
+			print("[TEX_LOAD]   图片尺寸: ", nimg.get_width(), "x", nimg.get_height())
 			new_texture = ImageTexture.create_from_image(nimg)
+			print("[TEX_LOAD]   ImageTexture创建: ", new_texture != null)
 	
 	if new_texture and is_instance_valid(cell.building_ref):
 		cell.building_ref.texture = new_texture

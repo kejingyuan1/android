@@ -23,7 +23,10 @@ func setup(gx, gy, lv = 1):
     level = lv
     # 精灵
     _sprite = Sprite2D.new()
-    _sprite.texture = load("res://assets/textures/buildings/" + _get_texture_name() + ".png")
+    var tex_path = "res://assets/textures/buildings/" + _get_texture_name() + ".png"
+    print("[TEX_LOAD] 防御塔纹理: ", tex_path, " 存在=", ResourceLoader.exists(tex_path))
+    _sprite.texture = load(tex_path)
+    print("[TEX_LOAD]   防御塔纹理加载: ", _sprite.texture != null, " 尺寸=", _sprite.texture.get_width() if _sprite.texture else -1, "x", _sprite.texture.get_height() if _sprite.texture else -1)
     _sprite.centered = true
     _sprite.z_index = 5
     add_child(_sprite)
