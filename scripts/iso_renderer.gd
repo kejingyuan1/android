@@ -8,6 +8,7 @@ const TILE_W := 64
 const TILE_H := 32
 const HALF_W := 32.0
 const HALF_H := 16.0
+const EXTRA_TOP := 30  # 山脉/森林向上突起所需的额外纹理空间
 
 var _grid_map = null
 var _terrain_sprite = null
@@ -349,13 +350,17 @@ func _render_terrain_texture():
 	tile_images["dirt"] = _gen_dirt_tile(rng)
 	print("[TERRAIN] 土地生成完毕")
 	
-	# 计算纹理尺寸
+	# 计算纹理尺寸（山脉/森林需要额外顶部空间）
 	var img_w: float = (MAP_WIDTH + MAP_HEIGHT) * HALF_W
-	var img_h: float = (MAP_WIDTH + MAP_HEIGHT) * HALF_H
+	var img_h: float = (MAP_WIDTH + MAP_HEIGHT) * HALF_H + EXTRA_TOP * 2
 	var img := Image.create(int(img_w), int(img_h), false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
 	
-	var sprite_pos := Vector2((MAP_WIDTH - MAP_HEIGHT) * HALF_W / 2.0, (MAP_WIDTH + MAP_HEIGHT) * HALF_H / 2.0)
+	# 精灵定位（加了 EXTRA_TOP 偏移，保证山脉顶部不溢出）
+	var sprite_pos := Vector2(
+		(MAP_WIDTH - MAP_HEIGHT) * HALF_W / 2.0,
+		(MAP_WIDTH + MAP_HEIGHT) * HALF_H / 2.0 + EXTRA_TOP
+	)
 	
 	var terrain_map := {
 		0: ["water_0", "water_1", "water_2"],
@@ -370,7 +375,7 @@ func _render_terrain_texture():
 	for gy in range(MAP_HEIGHT):
 		for gx in range(MAP_WIDTH):
 			var tx: float = HALF_W * (gx - gy + MAP_HEIGHT)
-			var ty: float = HALF_H * (gx + gy)
+			var ty: float = HALF_H * (gx + gy) + EXTRA_TOP
 			
 			var nt = _grid_map.get_natural_terrain(gx, gy)
 			var names = terrain_map.get(nt, ["grass_0"])
@@ -379,16 +384,15 @@ func _render_terrain_texture():
 			if simg == null:
 				continue
 			
-			# 山脉、森林等特殊高度tile需要偏移以对齐地面
-			var offset_y: int = 0
+			var offset_y: int = EXTRA_TOP  # 普通地板：偏移 EXTRA_TOP
 			if nt >= 4:
 				# 山脉：底部对齐地面
-				offset_y = TILE_H - simg.get_height()
+				offset_y = EXTRA_TOP - (simg.get_height() - TILE_H)
 			elif nt == 3:
-				# 森林：树冠向上突起，菱形中心对齐
-				offset_y = - (simg.get_height() - TILE_H) / 2
+				# 森林：树冠中心对齐菱形中心
+				offset_y = EXTRA_TOP - (simg.get_height() / 2 - TILE_H / 2)
 			
-			img.blit_rect(simg, Rect2i(0, 0, TILE_W, simg.get_height()), Vector2i(tx, ty + offset_y))
+			img.blit_rect(simg, Rect2i(0, 0, TILE_W, simg.get_height()), Vector2i(tx, ty + offset_y - EXTRA_TOP))
 			drawn += 1
 	
 	print("[TERRAIN] 地形渲染完成: ", drawn, " tiles → ", img_w, "x", img_h)
