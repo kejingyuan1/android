@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b71i62xnfx4hh"
-path="res://.godot/imported/sand.png-21a6e0cf31cd4c3d0d98dfbbfbb4f50d.ctex"
+uid="uid://mru250zfz7wyprld1ojd"
+path="res://.godot/imported/sand.png-7f4bd09e6d83419f2c3495f3a0d33f3c.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/isometric/sand.png"
-dest_files=["res://.godot/imported/sand.png-21a6e0cf31cd4c3d0d98dfbbfbb4f50d.ctex"]
+dest_files=["res://.godot/imported/sand.png-7f4bd09e6d83419f2c3495f3a0d33f3c.ctex"]
 
 [params]
 

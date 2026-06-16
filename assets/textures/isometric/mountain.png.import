@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bnmy4hxwwhysh"
-path="res://.godot/imported/mountain.png-68b885b091cacb2b96808a731926e5a4.ctex"
+uid="uid://a9w8c5ohxf14nvhh4fgy"
+path="res://.godot/imported/mountain.png-aa96c01747efdb2c2f10872c4a574201.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/isometric/mountain.png"
-dest_files=["res://.godot/imported/mountain.png-68b885b091cacb2b96808a731926e5a4.ctex"]
+dest_files=["res://.godot/imported/mountain.png-aa96c01747efdb2c2f10872c4a574201.ctex"]
 
 [params]
 

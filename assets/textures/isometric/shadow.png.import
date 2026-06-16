@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://baknqv154vru0"
-path="res://.godot/imported/shadow.png-df2c2b90f2b5d6621f64f7331c99d5a8.ctex"
+uid="uid://i82w1mjsrtinpixi4tdd"
+path="res://.godot/imported/shadow.png-3c824bb1623a32bf4b7d86d413107e9b.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/isometric/shadow.png"
-dest_files=["res://.godot/imported/shadow.png-df2c2b90f2b5d6621f64f7331c99d5a8.ctex"]
+dest_files=["res://.godot/imported/shadow.png-3c824bb1623a32bf4b7d86d413107e9b.ctex"]
 
 [params]
 

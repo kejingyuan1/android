@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dsrpf1oq4p4vx"
-path="res://.godot/imported/ghost.png-22ce85932d92e8a48ead7d0694ef061e.ctex"
+uid="uid://tqt41ccduqc7j6y44h2p"
+path="res://.godot/imported/ghost.png-ef7eabb2c7dd67445b02feba1701e771.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/isometric/ghost.png"
-dest_files=["res://.godot/imported/ghost.png-22ce85932d92e8a48ead7d0694ef061e.ctex"]
+dest_files=["res://.godot/imported/ghost.png-ef7eabb2c7dd67445b02feba1701e771.ctex"]
 
 [params]
 

@@ -51,14 +51,31 @@ func _render_terrain_texture():
 		"sand","forest","mountain","dirt"]
 	for n in names_arr:
 		var png_path = ProjectSettings.globalize_path("res://assets/textures/isometric/%s.png" % n)
+		print("[TERRAIN] 加载贴图: ", png_path)
 		var file = FileAccess.open(png_path, FileAccess.READ)
 		if file:
 			var buffer = file.get_buffer(file.get_length())
 			file.close()
+			print("[TERRAIN]  文件大小: ", buffer.size(), " bytes")
 			var simg = Image.new()
 			if simg.load_png_from_buffer(buffer) == OK:
 				tile_images[n] = simg
+				# 验证第一个非透明像素的颜色
+				var found = false
+				for sy in range(32):
+					for sx in range(64):
+						if simg.get_pixel(sx, sy).a > 0.5:
+							var c = simg.get_pixel(sx, sy)
+							print("[TERRAIN]  ", n, " 首像素(", sx, ",", sy, "): (", int(c.r*255), ",", int(c.g*255), ",", int(c.b*255), ")")
+							found = true
+							break
+					if found: break
+			else:
+				print("[TERRAIN]  WARN: 无法解码PNG: ", png_path)
+		else:
+			print("[TERRAIN]  WARN: 无法打开文件: ", png_path)
 	if tile_images.size() == 0:
+		print("[TERRAIN]  ERROR: 没有可用贴图!")
 		return
 	
 	# 计算纹理尺寸：等距地图的完整矩形区域
