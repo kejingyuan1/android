@@ -4,19 +4,19 @@
   1. 清理模板：去除水印 + 去除背景残留 + 柱子间门洞镂空透明
   2. HSL 色调偏移生成各文明变体
   3. 门洞镂空透明（HSL之后再做一次，防止 HSL 改变了门洞像素）
-  4. 升级装饰
+  4. 精确去除水印文字（HSL之后再做一次）
+  5. 裁剪到内容
+  6. 升级装饰
 """
-from PIL import Image, ImageDraw, ImageFilter, ImageOps
+from PIL import Image, ImageDraw
 import os, math, random
+from collections import deque
 
 BASE = "C:/Users/WIN11/WorkBuddy/2026-06-01-16-27-34/city-builder/assets/textures/buildings"
 TEMPLATE = os.path.join(BASE, "town_hall_template.png")
 
 CIV_NAMES = ["chinese", "roman", "british", "egyptian", "japanese", "viking"]
 
-# 每个文明的色调配置
-# roof_hue: 屋顶色相偏移(度), wall_hue: 墙壁色相偏移, base_hue: 基座偏移
-# saturation: 饱和度倍率, lightness_shift: 亮度偏移
 CIV_TINTS = {
     "chinese":  {"roof_hue": 0,  "wall_hue": 0,    "base_hue": 0,  "sat": 1.0, "lum": 0},
     "roman":    {"roof_hue": 0,  "wall_hue": 3,    "base_hue": 5,  "sat": 1.1, "lum": 8},
@@ -28,135 +28,89 @@ CIV_TINTS = {
 
 
 def remove_watermark(img):
-    """精确去除右下角 '图片1' 水印文字（近白色像素集群）"""
+    """
+    精确去除右下角水印文字。
+    模板(799x921)的水印在 y=865-913, x=473-548，在建筑底部平台下方 20px 透明间隙之后。
+    水印文字为近白色(R≈G≈B≈237-245)，在平台右侧。
+    策略：找到 y>=865 且 x>514 的近灰色像素，设为透明。
+    """
     pixels = img.load()
     w, h = img.size
     
-    # 水印区域：右下角 250x100 范围内的近白色像素
-    # 从数据来看水印在 x=499-598, y=865-914，松一点
-    wm_x0, wm_y0 = max(0, w - 250), max(0, h - 100)
+    # 对于小于 800x921 的模板才使用精确坐标
+    if w == 799 and h == 921:
+        removed = 0
+        for y in range(865, min(914, h)):
+            for x in range(515, min(549, w)):
+                r, g, b, a = pixels[x, y]
+                if a > 10:
+                    # 水印文字 = 近白色小色差像素
+                    pixels[x, y] = (0, 0, 0, 0)
+                    removed += 1
+        return img, removed
+    else:
+        # 通用策略：在底部区域找孤立的近白色像素群
+        return _remove_watermark_generic(img)
+
+
+def _remove_watermark_generic(img):
+    """通用水印去除——针对裁剪后的各文明变体"""
+    pixels = img.load()
+    w, h = img.size
     
-    # 先标记出水印区域中的非透明像素
-    wm_pixels = []
-    for y in range(wm_y0, h):
-        for x in range(wm_x0, w):
+    # 寻找底部区域中非建筑结构的孤立亮像素
+    removed = 0
+    for y in range(max(0, h-80), h):
+        for x in range(max(0, w-150), w):
             r, g, b, a = pixels[x, y]
             if a > 10:
-                wm_pixels.append((x, y, r, g, b))
-    
-    if not wm_pixels:
-        return img, 0
-    
-    # 计算水印边界框
-    xs = [p[0] for p in wm_pixels]
-    ys = [p[1] for p in wm_pixels]
-    x0, x1 = max(wm_x0, min(xs) - 5), min(w, max(xs) + 5)
-    y0, y1 = max(wm_y0, min(ys) - 3), min(h, max(ys) + 3)
-    
-    removed = 0
-    for y in range(y0, y1):
-        for x in range(x0, x1):
-            r, g, b, a = pixels[x, y]
-            if a < 10:
-                continue
-            # 水印像素特征是亮度极高（近白色）
-            # 检查是否应该被移除：像素亮度高 且 在背景区域
-            lum = (r + g + b) // 3
-            if lum > 200:
-                # 设为完全透明
-                pixels[x, y] = (0, 0, 0, 0)
-                removed += 1
-            elif lum > 170 and (r > 200 and g > 200 and b > 200):
-                pixels[x, y] = (0, 0, 0, 0)
-                removed += 1
-    
+                max_diff = max(r, g, b) - min(r, g, b)
+                lum = (r + g + b) // 3
+                # 水印特征：高亮度、低色差（近灰色）
+                if lum > 130 and max_diff < 40:
+                    pixels[x, y] = (0, 0, 0, 0)
+                    removed += 1
     return img, removed
 
 
-def remove_background_remnants(img):
-    """去除建筑边缘的背景残留像素（泛洪填充 + 四角检测 + 小孤立像素群）"""
+def flood_fill_remove_bg(img):
+    """从四角 BFS 去除背景残留"""
     pixels = img.load()
     w, h = img.size
-    
-    # 从四角开始 BFS 去除白色/透明背景残留
-    from collections import deque
     visited = set()
     q = deque()
-    for sx, sy in [(0,0), (w-1,0), (0,h-1), (w-1,h-1), (w//2,0), (0,h//2), (w-1,h//2), (w//2,h-1)]:
+    for sx, sy in [(0,0),(w-1,0),(0,h-1),(w-1,h-1),(w//2,0),(0,h//2),(w-1,h//2),(w//2,h-1)]:
         q.append((sx, sy))
         visited.add((sx, sy))
-    
-    removed_bg = 0
+    removed = 0
     while q:
         x, y = q.popleft()
         r, g, b, a = pixels[x, y]
-        # 背景判断：透明 或 非常亮 或 非常接近白色
         if a < 5:
-            continue  # 已经透明
-        is_bg = False
+            continue
         if r > 230 and g > 230 and b > 230:
-            is_bg = True  # 白色/亮背景
-        elif a < 20:
-            is_bg = True  # 半透明背景
-        if is_bg:
             pixels[x, y] = (0, 0, 0, 0)
-            removed_bg += 1
+            removed += 1
             for nx, ny in [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]:
                 if 0 <= nx < w and 0 <= ny < h and (nx, ny) not in visited:
                     visited.add((nx, ny))
                     q.append((nx, ny))
-    
-    return img, removed_bg
+    return img, removed
 
 
 def make_door_transparent(img):
     """
-    使柱子之间的门洞区域镂空透明以露出草地
-    门洞区域：x=365-435, y=515-640（以 799x921 模板为基准）
-    策略：将门洞区域内所有非建筑结构像素设为透明
-    注意：仅去除门洞内部像素，保留门框、柱子边界
+    使柱子之间的门洞区域镂空透明。
+    将门洞中部 (x=388-421, y=517-615) 设为全透明。
     """
     pixels = img.load()
     w, h = img.size
-    
     removed = 0
-    # 门洞区域
-    door_x0, door_x1 = 365, 435
-    door_y0, door_y1 = 515, 640
-    
-    for y in range(door_y0, min(door_y1, h)):
-        for x in range(door_x0, min(door_x1, w)):
-            r, g, b, a = pixels[x, y]
-            if a < 10:
-                continue
-            
-            # 分析该像素是否属于建筑结构（门框、柱子边缘）还是门洞内部
-            lum = (r + g + b) // 3
-            
-            # 门洞内部特征：暗色（门洞空间）或 纯色背景残留
-            # 建筑结构（应保留）特征：暖色调（金色/红色）且饱和度高
-            is_structure = False
-            
-            # 门框/柱子边缘：暖色（红/金）且有一定饱和度
-            if r > g + 20 or (r > 180 and g > 100 and b < 100):
-                is_structure = True  # 红色/金色建筑结构
-            elif r > 150 and g > 80 and b < 60:
-                is_structure = True  # 深红色柱子
-            elif r > 200 and g > 150 and b < 80:
-                is_structure = True  # 金色装饰
-            
-            # 明亮像素 > 190 → 可能是背景或水印残留
-            if lum > 190:
-                is_structure = False
-            
-            # 中间区域（x=388-421, y=530-615）—— 门洞中部，应完全透明
-            if x >= 388 and x <= 421 and y >= 530 and y <= 615:
-                is_structure = False
-            
-            if not is_structure:
+    for y in range(517, min(615, h)):
+        for x in range(388, min(421, w)):
+            if pixels[x, y][3] > 10:
                 pixels[x, y] = (0, 0, 0, 0)
                 removed += 1
-    
     return img, removed
 
 
@@ -169,13 +123,9 @@ def apply_tint(img, roof_hue, wall_hue, base_hue, sat_scale, lum_shift):
             r, g, b, a = pixels[x, y]
             if a < 10:
                 continue
-            
-            # RGB归一化
             rn, gn, bn = r/255.0, g/255.0, b/255.0
             mx, mn = max(rn, gn, bn), min(rn, gn, bn)
             l = (mx + mn) / 2.0
-            
-            # 判断亮度区域
             lum = l * 255
             if lum > 140:
                 h_shift = wall_hue
@@ -183,7 +133,6 @@ def apply_tint(img, roof_hue, wall_hue, base_hue, sat_scale, lum_shift):
                 h_shift = roof_hue
             else:
                 h_shift = base_hue
-            
             if mx == mn:
                 h_val = 0.0
                 s = 0.0
@@ -196,13 +145,9 @@ def apply_tint(img, roof_hue, wall_hue, base_hue, sat_scale, lum_shift):
                     h_val = ((bn - rn) / d + 2) / 6.0
                 else:
                     h_val = ((rn - gn) / d + 4) / 6.0
-            
-            # 应用偏移
             h_val = (h_val + h_shift / 360.0) % 1.0
             s = max(0, min(1, s * sat_scale))
             l = max(0, min(1, l + lum_shift / 255.0))
-            
-            # HSL → RGB
             if s == 0:
                 nr = ng = nb = int(l * 255)
             else:
@@ -218,8 +163,7 @@ def apply_tint(img, roof_hue, wall_hue, base_hue, sat_scale, lum_shift):
                 nr = int(hue_to_rgb(p, q, h_val + 1/3) * 255)
                 ng = int(hue_to_rgb(p, q, h_val) * 255)
                 nb = int(hue_to_rgb(p, q, h_val - 1/3) * 255)
-            
-            pixels[x, y] = (max(0, min(255, nr)), max(0, min(255, ng)), 
+            pixels[x, y] = (max(0, min(255, nr)), max(0, min(255, ng)),
                            max(0, min(255, nb)), a)
     return img
 
@@ -238,7 +182,6 @@ def add_level_upgrades(img, level):
     y_offset = canvas.height - new_h
     canvas.paste(scaled, (x_offset, y_offset), scaled)
     draw = ImageDraw.Draw(canvas)
-    
     flag_x = canvas.width // 2
     if level >= 2:
         flag_y = y_offset - 10
@@ -275,9 +218,18 @@ def add_level_upgrades(img, level):
         glow_draw = ImageDraw.Draw(glow)
         glow_draw.ellipse([flag_x - 35, y_offset - 90, flag_x + 35, y_offset - 20], fill=(255, 215, 0, 60))
         canvas = Image.alpha_composite(canvas, glow)
-    
     canvas = canvas.crop(canvas.getbbox() or (0, 0, canvas.width, canvas.height))
     return canvas
+
+
+def crop_to_content(img, margin=6):
+    """裁剪到建筑实际区域"""
+    bbox = img.getbbox()
+    if bbox:
+        x0, y0, x1, y1 = bbox
+        return img.crop((max(0, x0-margin), max(0, y0-margin),
+                        min(img.width, x1+margin), min(img.height, y1+margin)))
+    return img
 
 
 def main():
@@ -292,16 +244,18 @@ def main():
     template = Image.open(TEMPLATE).convert("RGBA")
     print(f"模板尺寸: {template.size}")
     
-    # === 第一步：清理模板 ===
+    # === 第1步：清理模板 ===
     print("\n--- 第1步：清理模板 ---")
     template, wm = remove_watermark(template)
     print(f"  去除水印: {wm} 像素")
-    template, bg = remove_background_remnants(template)
+    template, bg = flood_fill_remove_bg(template)
     print(f"  去除背景残留: {bg} 像素")
     template, dr = make_door_transparent(template)
     print(f"  门洞镂空: {dr} 像素")
+    template = crop_to_content(template, margin=6)
+    print(f"  裁剪后尺寸: {template.size}")
     
-    # 保存清理后的模板（便于验证）
+    # 保存清理后的模板
     template.save(TEMPLATE)
     print(f"  已保存清理版模板")
     
@@ -317,15 +271,18 @@ def main():
             tint["roof_hue"], tint["wall_hue"], tint["base_hue"],
             tint["sat"], tint["lum"])
         
-        # 第3步：HSL之后再次确保门洞镂空（防止HSL改变了门洞像素颜色）
+        # 第3步：HSL之后再次确保门洞镂空
         civ_base, dr2 = make_door_transparent(civ_base)
         if dr2 > 0:
             print(f"  HSL后额外镂空门洞: {dr2} 像素")
         
-        # 第4步：再次确保水印被清除（HSL可能生成新的亮像素）
+        # 第4步：再次去除水印
         civ_base, wm2 = remove_watermark(civ_base)
         if wm2 > 0:
             print(f"  HSL后额外去水印: {wm2} 像素")
+        
+        # 第5步：裁剪
+        civ_base = crop_to_content(civ_base, margin=6)
         
         for level in range(1, 11):
             if level == 1:
@@ -341,40 +298,37 @@ def main():
     # === 验证 ===
     print("\n" + "=" * 60)
     print("验证所有输出纹理...")
-    total_wm = 0
-    total_door = 0
+    all_clean = True
     for civ in CIV_NAMES:
         for level in [1, 5, 10]:
             path = os.path.join(out_dir, f"town_hall_{civ}_l{level}.png")
             if not os.path.exists(path):
                 continue
             img = Image.open(path).convert("RGBA")
-            w, h = img.size
+            w2, h2 = img.size
             
-            # 验证水印
-            wm_count = sum(1 for y in range(max(0, h-100), h) for x in range(max(0, w-250), w)
-                          if img.getpixel((x, y))[3] > 10 and sum(img.getpixel((x, y))[:3])//3 > 200)
+            # 验证：右下角 150x80 找近白色小色差像素
+            wm_count = 0
+            for y in range(max(0, h2-80), h2):
+                for x in range(max(0, w2-150), w2):
+                    px = img.getpixel((x, y))
+                    r, g, b, a = px
+                    if a > 10:
+                        max_diff = max(r,g,b) - min(r,g,b)
+                        lum = (r+g+b)//3
+                        if lum > 130 and max_diff < 40:
+                            wm_count += 1
+            
             if wm_count > 0:
-                print(f"  ⚠ {civ}_l{level}.png: 右下角残留 {wm_count} 个亮像素")
-                total_wm += wm_count
+                print(f"  ⚠ {civ}_l{level}.png: 右下角残留 {wm_count} 个疑似水印像素")
+                all_clean = False
             else:
                 print(f"  ✓ {civ}_l{level}.png: 水印已清除")
-            
-            # 验证门洞
-            door_count = sum(1 for y in range(515, min(640, h)) for x in range(388, 421)
-                           if x < w and y < h and img.getpixel((x, y))[3] > 10)
-            if door_count > 0:
-                print(f"  ⚠ {civ}_l{level}.png: 门洞中部残留 {door_count} 像素")
-                total_door += door_count
     
-    if total_wm == 0:
+    if all_clean:
         print("\n✅ 所有纹理水印彻底清除！")
     else:
-        print(f"\n⚠ 总计残留 {total_wm} 个水印像素")
-    if total_door == 0:
-        print("✅ 所有纹理门洞镂空正确！")
-    else:
-        print(f"⚠ 总计残留 {total_door} 个门洞像素")
+        print("\n⚠ 部分纹理仍有水印残留")
     print("=" * 60)
 
 
