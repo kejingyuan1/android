@@ -1517,8 +1517,8 @@ func _place_town_hall():
 			texture = ImageTexture.create_from_image(img)
 			print("[TEX_LOAD]   ImageTexture创建: ", texture != null)
 			# 验证纹理创建后alpha是否保留
-			var tex_img := texture.get_image()
-			var after_px := tex_img.get_pixel(door_x, door_y)
+			var tex_img: Image = texture.get_image()
+			var after_px: Color = tex_img.get_pixel(door_x, door_y)
 			print("[TEX_LOAD]   纹理创建后门洞(", door_x, ",", door_y, "): RGBA=(", after_px.r, ",", after_px.g, ",", after_px.b, ",", after_px.a, ")")
 	
 	if not texture:
