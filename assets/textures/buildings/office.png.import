@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bl1ued9efeq5euun9t1f"
-path="res://.godot/imported/office.png-9a6f3d77302296c0378b0e1963ac7485.ctex"
+uid="uid://byv4vqva2qga4"
+path="res://.godot/imported/office.png-d9dc132dab399e922eee698b1865ce4d.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/buildings/office.png"
-dest_files=["res://.godot/imported/office.png-9a6f3d77302296c0378b0e1963ac7485.ctex"]
+dest_files=["res://.godot/imported/office.png-d9dc132dab399e922eee698b1865ce4d.ctex"]
 
 [params]
 

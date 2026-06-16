@@ -113,9 +113,17 @@ func place_city_marker(wx: int, wy: int, civ_id: int, city_name: String):
 	print("【T=", Time.get_ticks_msec(), "】place_city_marker 开始")
 	var marker = Sprite2D.new()
 
-	# 加载文明对应的主城建筑纹理
+	# 加载文明对应的主城建筑纹理（使用原始 PNG 加载绕过 Godot 导入系统）
 	var tex_path = _get_capital_texture_path(civ_id)
-	var tex = load(tex_path)
+	var tex = null
+	var png_path = ProjectSettings.globalize_path(tex_path)
+	var file = FileAccess.open(png_path, FileAccess.READ)
+	if file:
+		var buf = file.get_buffer(file.get_length())
+		file.close()
+		var img = Image.new()
+		if img.load_png_from_buffer(buf) == OK:
+			tex = ImageTexture.create_from_image(img)
 	print("【T=", Time.get_ticks_msec(), "】纹理加载完成, tex=", tex != null)
 
 	if tex:

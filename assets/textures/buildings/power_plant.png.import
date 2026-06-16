@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://pqud5f6k0ehe2w4l6qlj"
-path="res://.godot/imported/power_plant.png-2ef5450579d0868b9e5c96dceb962bb2.ctex"
+uid="uid://dijq7rqld45p"
+path="res://.godot/imported/power_plant.png-ac74fdc27bc4bf8b3fcea57a24e03885.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/buildings/power_plant.png"
-dest_files=["res://.godot/imported/power_plant.png-2ef5450579d0868b9e5c96dceb962bb2.ctex"]
+dest_files=["res://.godot/imported/power_plant.png-ac74fdc27bc4bf8b3fcea57a24e03885.ctex"]
 
 [params]
 

@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d8y6b318jcgadot9dr9w"
-path="res://.godot/imported/capital_japan.png-97e846a447ab696c596557781d36b25e.ctex"
+uid="uid://mqqrqmi4eqcc"
+path="res://.godot/imported/capital_japan.png-3ff83e7b442610b1389a92fb60f9f724.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/world_map/capital_japan.png"
-dest_files=["res://.godot/imported/capital_japan.png-97e846a447ab696c596557781d36b25e.ctex"]
+dest_files=["res://.godot/imported/capital_japan.png-3ff83e7b442610b1389a92fb60f9f724.ctex"]
 
 [params]
 

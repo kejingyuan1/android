@@ -1456,17 +1456,28 @@ func _place_town_hall():
 				if iso_renderer and iso_renderer.has_method("clear_road"):
 					iso_renderer.clear_road(nx, ny)
 	
-	# 加载大本营纹理
+	# 加载大本营纹理（使用原始 PNG 加载绕过 Godot 导入系统）
 	var tex_path = "res://assets/textures/buildings/town_hall_%s_l1.png" % civ_name
 	var texture = null
-	if ResourceLoader.exists(tex_path):
-		texture = load(tex_path)
+	var png_path = ProjectSettings.globalize_path(tex_path)
+	var file = FileAccess.open(png_path, FileAccess.READ)
+	if file:
+		var buffer = file.get_buffer(file.get_length())
+		file.close()
+		var img = Image.new()
+		if img.load_png_from_buffer(buffer) == OK:
+			texture = ImageTexture.create_from_image(img)
 	
 	if not texture:
 		print("[WARN] 大本营纹理不存在: ", tex_path, "，使用默认建筑纹理")
 		var fallback_path = "res://assets/textures/buildings/house1.png"
-		if ResourceLoader.exists(fallback_path):
-			texture = load(fallback_path)
+		var fb_file = FileAccess.open(ProjectSettings.globalize_path(fallback_path), FileAccess.READ)
+		if fb_file:
+			var fb_buf = fb_file.get_buffer(fb_file.get_length())
+			fb_file.close()
+			var fb_img = Image.new()
+			if fb_img.load_png_from_buffer(fb_buf) == OK:
+				texture = ImageTexture.create_from_image(fb_img)
 	
 	if not texture:
 		print("[WARN] 默认建筑纹理也不存在")
@@ -1524,11 +1535,20 @@ func upgrade_town_hall():
 	var new_level = current_level + 1
 	var new_tex_path = "res://assets/textures/buildings/town_hall_%s_l%d.png" % [civ_name, new_level]
 	
-	if ResourceLoader.exists(new_tex_path):
-		var new_tex = load(new_tex_path)
-		if new_tex and is_instance_valid(cell.building_ref):
-			cell.building_ref.texture = new_tex
-			cell.building_level = new_level
+	# 使用原始 PNG 加载绕过导入缓存
+	var new_texture = null
+	var new_png_path = ProjectSettings.globalize_path(new_tex_path)
+	var new_file = FileAccess.open(new_png_path, FileAccess.READ)
+	if new_file:
+		var buf = new_file.get_buffer(new_file.get_length())
+		new_file.close()
+		var nimg = Image.new()
+		if nimg.load_png_from_buffer(buf) == OK:
+			new_texture = ImageTexture.create_from_image(nimg)
+	
+	if new_texture and is_instance_valid(cell.building_ref):
+		cell.building_ref.texture = new_texture
+		cell.building_level = new_level
 			# 逐级增大比例
 			cell.building_ref.scale = Vector2(0.45 + (new_level - 1) * 0.035, 0.45 + (new_level - 1) * 0.035)
 			_show_toast("⬆️ 大本营升级到 Lv." + str(new_level))

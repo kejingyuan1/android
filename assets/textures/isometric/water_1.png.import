@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://rfn3b5fwrcavafxj6dg2"
-path="res://.godot/imported/water_1.png-3787f6abf40f93fa40f002d40ed5b8ac.ctex"
+uid="uid://b8hd5cde3e3h4"
+path="res://.godot/imported/water_1.png-aed740dd0787d75b480c5b0ca891237b.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/isometric/water_1.png"
-dest_files=["res://.godot/imported/water_1.png-3787f6abf40f93fa40f002d40ed5b8ac.ctex"]
+dest_files=["res://.godot/imported/water_1.png-aed740dd0787d75b480c5b0ca891237b.ctex"]
 
 [params]
 

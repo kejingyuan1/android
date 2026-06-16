@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bhpicmo4b3x1kpirc2pr"
-path="res://.godot/imported/trade_post.png-dd6a4f2f2220ef86edfb245f845955a5.ctex"
+uid="uid://bwgva1fapm6rn"
+path="res://.godot/imported/trade_post.png-ccfaee9038782de90c2db3fa1d57a2ff.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/buildings/trade_post.png"
-dest_files=["res://.godot/imported/trade_post.png-dd6a4f2f2220ef86edfb245f845955a5.ctex"]
+dest_files=["res://.godot/imported/trade_post.png-ccfaee9038782de90c2db3fa1d57a2ff.ctex"]
 
 [params]
 

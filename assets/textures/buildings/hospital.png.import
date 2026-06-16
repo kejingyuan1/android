@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ecpoc4i692bt0g75tere"
-path="res://.godot/imported/hospital.png-60d22776154beb79f2b865649c5d413f.ctex"
+uid="uid://cxtvuihylu3nu"
+path="res://.godot/imported/hospital.png-cbec5935ff148853135dc60b4f48f615.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/buildings/hospital.png"
-dest_files=["res://.godot/imported/hospital.png-60d22776154beb79f2b865649c5d413f.ctex"]
+dest_files=["res://.godot/imported/hospital.png-cbec5935ff148853135dc60b4f48f615.ctex"]
 
 [params]
 

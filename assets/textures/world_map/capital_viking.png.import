@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://j7je1qka48zaecaehebn"
-path="res://.godot/imported/capital_viking.png-3a88216f15a6449deb8324ce21bedd7f.ctex"
+uid="uid://b6jk4apigdivv"
+path="res://.godot/imported/capital_viking.png-2b8bdf87191a6038d7f449b403e0db79.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/world_map/capital_viking.png"
-dest_files=["res://.godot/imported/capital_viking.png-3a88216f15a6449deb8324ce21bedd7f.ctex"]
+dest_files=["res://.godot/imported/capital_viking.png-2b8bdf87191a6038d7f449b403e0db79.ctex"]
 
 [params]
 

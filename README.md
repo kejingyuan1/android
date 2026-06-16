@@ -77,8 +77,8 @@ grid_to_world(gx, gy) → Vector2((gx - gy) * 32, (gx + gy) * 16)
 
 # 世界坐标 → 网格坐标（鼠标拾取）
 world_to_grid(pos) → Vector2(
-    floor((pos.x/32 + pos.y/16) / 2),
-    floor((pos.y/16 - pos.x/32) / 2)
+	floor((pos.x/32 + pos.y/16) / 2),
+	floor((pos.y/16 - pos.x/32) / 2)
 )
 ```
 
@@ -86,7 +86,7 @@ world_to_grid(pos) → Vector2(
 
 ```gdscript
 func is_in_diamond(x, y, cx, cy):
-    return abs(x-cx)/cx + abs(y-cy)/cy <= 1.0
+	return abs(x-cx)/cx + abs(y-cy)/cy <= 1.0
 ```
 
 ### TileMap 配置
@@ -130,13 +130,13 @@ highlight_map_layer.visible = false
 ```
 game_manager._ready()
   → _generate_terrain_texture()
-    → iso_renderer.setup(grid_map, seed)     # 传入网格引用
-    → iso_renderer.generate()                 # 创建TileMap、填充地形、道路、高亮
-      → _clear_children()                     # 清理旧子节点
-      → _create_terrain_tileset()             # 创建地形 TileMap
-      → _fill_terrain()                       # 填充240×160地形格
-      → _create_road_tileset()               # 创建道路 TileMap
-      → init_overlays()                       # 创建高亮/虚影 Sprite
+	→ iso_renderer.setup(grid_map, seed)     # 传入网格引用
+	→ iso_renderer.generate()                 # 创建TileMap、填充地形、道路、高亮
+	  → _clear_children()                     # 清理旧子节点
+	  → _create_terrain_tileset()             # 创建地形 TileMap
+	  → _fill_terrain()                       # 填充240×160地形格
+	  → _create_road_tileset()               # 创建道路 TileMap
+	  → init_overlays()                       # 创建高亮/虚影 Sprite
 ```
 
 ## 道路系统
@@ -160,12 +160,12 @@ game_manager._ready()
 用户点击选择道路工具
   → bottom_bar 设置 _current_variant = 0/1/2
   → 点击地图 → _handle_game_input()
-    → iso_renderer.world_to_grid() 获取网格坐标
-    → _handle_tool_input() → _handle_road_input()
-    → road_system.start_draw(cell, road_type)  # 设置数据
-    → _update_cell_visual(x, y)                # 渲染（调用 iso_renderer.update_road）
-    → 拖拽: continue_draw + _update_cell_visual
-    → 松手: end_draw + _full_render()          # 全量重绘
+	→ iso_renderer.world_to_grid() 获取网格坐标
+	→ _handle_tool_input() → _handle_road_input()
+	→ road_system.start_draw(cell, road_type)  # 设置数据
+	→ _update_cell_visual(x, y)                # 渲染（调用 iso_renderer.update_road）
+	→ 拖拽: continue_draw + _update_cell_visual
+	→ 松手: end_draw + _full_render()          # 全量重绘
 ```
 
 ### 道路邻居检测
@@ -285,9 +285,9 @@ scripts/
 │   ├── info_card.gd             # 信息卡片
 │   └── sub_menu.gd              # 子菜单
 └── world_map/
-    ├── global_game.gd           # 全局控制器
-    ├── world_renderer.gd        # 世界地图渲染
-    └── world_camera.gd          # 世界地图相机
+	├── global_game.gd           # 全局控制器
+	├── world_renderer.gd        # 世界地图渲染
+	└── world_camera.gd          # 世界地图相机
 
 assets/textures/
 ├── isometric/                   # 等距地形纹理 (64×32)
@@ -309,10 +309,10 @@ assets/textures/
 │   ├── asphalt_sheet.png
 │   └── highway_sheet.png
 └── buildings/                   # 建筑精灵
-    ├── house1.png
-    ├── house2.png
-    ├── apartment.png
-    ├── shop.png
-    ├── factory.png
-    └── office.png
+	├── house1.png
+	├── house2.png
+	├── apartment.png
+	├── shop.png
+	├── factory.png
+	└── office.png
 ```

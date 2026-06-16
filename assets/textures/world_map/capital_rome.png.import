@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://pphsa9mwsg2rgxcrpnqg"
-path="res://.godot/imported/capital_rome.png-0f78f3e03a55c44dc4ce33b1b48c6479.ctex"
+uid="uid://dqcpmqetsiwf7"
+path="res://.godot/imported/capital_rome.png-42295e370e12a8d2e754e8c9334f1a77.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/world_map/capital_rome.png"
-dest_files=["res://.godot/imported/capital_rome.png-0f78f3e03a55c44dc4ce33b1b48c6479.ctex"]
+dest_files=["res://.godot/imported/capital_rome.png-42295e370e12a8d2e754e8c9334f1a77.ctex"]
 
 [params]
 

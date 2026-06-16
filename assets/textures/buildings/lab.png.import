@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://5wienmf0g0os2k3wcll9"
-path="res://.godot/imported/lab.png-e8c25a3c6586c2cd817007b1628d4a52.ctex"
+uid="uid://c2jkhugv63pls"
+path="res://.godot/imported/lab.png-2625c122920c2401d5e0658a379f43da.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/buildings/lab.png"
-dest_files=["res://.godot/imported/lab.png-e8c25a3c6586c2cd817007b1628d4a52.ctex"]
+dest_files=["res://.godot/imported/lab.png-2625c122920c2401d5e0658a379f43da.ctex"]
 
 [params]
 

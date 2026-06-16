@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ksomu7ap74tfbhx4qnt0"
-path="res://.godot/imported/water_pump.png-fa93b4f9a90c0522dbdbe7f1f31f8d2f.ctex"
+uid="uid://d24xcmjd1228"
+path="res://.godot/imported/water_pump.png-a0089ae7e6cf8e76b32c32dcdd9ed312.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/buildings/water_pump.png"
-dest_files=["res://.godot/imported/water_pump.png-fa93b4f9a90c0522dbdbe7f1f31f8d2f.ctex"]
+dest_files=["res://.godot/imported/water_pump.png-a0089ae7e6cf8e76b32c32dcdd9ed312.ctex"]
 
 [params]
 

@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://uvt5kanhhrwaiqtn5ehi"
-path="res://.godot/imported/town_hall_egyptian_template.png-007c99cc21c16fe8f76484de7898eec0.ctex"
+uid="uid://b84sucmowq6te"
+path="res://.godot/imported/town_hall_egyptian_template.png-a1a7257a5fcaced44a4abc750e265099.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/buildings/town_hall_egyptian_template.png"
-dest_files=["res://.godot/imported/town_hall_egyptian_template.png-007c99cc21c16fe8f76484de7898eec0.ctex"]
+dest_files=["res://.godot/imported/town_hall_egyptian_template.png-a1a7257a5fcaced44a4abc750e265099.ctex"]
 
 [params]
 

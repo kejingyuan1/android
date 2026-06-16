@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://qpthlmlhd4ethlr6f3w8"
-path="res://.godot/imported/town_hall_roman_l2.png-2e1a994e034560871d2f025c9ee5b33b.ctex"
+uid="uid://co7b33v7b1vd2"
+path="res://.godot/imported/town_hall_roman_l2.png-e71aa20f45ae2d6f50dab601dfc1134b.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/buildings/town_hall_roman_l2.png"
-dest_files=["res://.godot/imported/town_hall_roman_l2.png-2e1a994e034560871d2f025c9ee5b33b.ctex"]
+dest_files=["res://.godot/imported/town_hall_roman_l2.png-e71aa20f45ae2d6f50dab601dfc1134b.ctex"]
 
 [params]
 

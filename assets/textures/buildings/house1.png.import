@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://tmd5tkr1mvxgtju2cwyj"
-path="res://.godot/imported/house1.png-e2529eb8e0348e66a965ae0772c1ee7a.ctex"
+uid="uid://b7l0fbdofayvx"
+path="res://.godot/imported/house1.png-0817d5e118b82a09dad0f7fbec905d2b.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/buildings/house1.png"
-dest_files=["res://.godot/imported/house1.png-e2529eb8e0348e66a965ae0772c1ee7a.ctex"]
+dest_files=["res://.godot/imported/house1.png-0817d5e118b82a09dad0f7fbec905d2b.ctex"]
 
 [params]
 

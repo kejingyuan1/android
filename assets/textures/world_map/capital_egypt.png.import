@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://raomqpg30c1zxpvqx24c"
-path="res://.godot/imported/capital_egypt.png-b6ebc4f102a823396f94a5ea5aa20003.ctex"
+uid="uid://wp3d15npdshc"
+path="res://.godot/imported/capital_egypt.png-4227a17b9b7d59107b562b99619d04f0.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/world_map/capital_egypt.png"
-dest_files=["res://.godot/imported/capital_egypt.png-b6ebc4f102a823396f94a5ea5aa20003.ctex"]
+dest_files=["res://.godot/imported/capital_egypt.png-4227a17b9b7d59107b562b99619d04f0.ctex"]
 
 [params]
 

@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ukb5kxxq7oaylngt7zp1"
-path="res://.godot/imported/town_hall_chinese_l9.png-7c57455509a260f98cbc5b968c3065f0.ctex"
+uid="uid://1oyy0ef1chq7"
+path="res://.godot/imported/town_hall_chinese_l9.png-fe9051bd9e56ca7576c8477c3683a670.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/buildings/town_hall_chinese_l9.png"
-dest_files=["res://.godot/imported/town_hall_chinese_l9.png-7c57455509a260f98cbc5b968c3065f0.ctex"]
+dest_files=["res://.godot/imported/town_hall_chinese_l9.png-fe9051bd9e56ca7576c8477c3683a670.ctex"]
 
 [params]
 

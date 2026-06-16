@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://mjdpygetutxtc199tdhu"
-path="res://.godot/imported/town_hall_british_l7.png-49f8c278d745b5c995fff9548ff29fa8.ctex"
+uid="uid://bkd0b12meifyc"
+path="res://.godot/imported/town_hall_british_l7.png-38d5442cd9a14ed785b82cfa326738c6.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/buildings/town_hall_british_l7.png"
-dest_files=["res://.godot/imported/town_hall_british_l7.png-49f8c278d745b5c995fff9548ff29fa8.ctex"]
+dest_files=["res://.godot/imported/town_hall_british_l7.png-38d5442cd9a14ed785b82cfa326738c6.ctex"]
 
 [params]
 

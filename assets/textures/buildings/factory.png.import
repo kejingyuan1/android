@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://jh682kz87jkvc89z3bh0"
-path="res://.godot/imported/factory.png-c9d35e5a28c67c0a3c073bb1a896f68b.ctex"
+uid="uid://3yrg4yvdjhnn"
+path="res://.godot/imported/factory.png-6964c29520bae572233e04ed7aac8295.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/buildings/factory.png"
-dest_files=["res://.godot/imported/factory.png-c9d35e5a28c67c0a3c073bb1a896f68b.ctex"]
+dest_files=["res://.godot/imported/factory.png-6964c29520bae572233e04ed7aac8295.ctex"]
 
 [params]
 

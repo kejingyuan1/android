@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://o8dsu0qujdhcl0fcp6dq"
-path="res://.godot/imported/capital_china.png-6fcba7b76113ca048b6ca9c1143e6404.ctex"
+uid="uid://bvu0j1dfr40bm"
+path="res://.godot/imported/capital_china.png-a48fe0313e7b4d6c7f6b48dec61391aa.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/world_map/capital_china.png"
-dest_files=["res://.godot/imported/capital_china.png-6fcba7b76113ca048b6ca9c1143e6404.ctex"]
+dest_files=["res://.godot/imported/capital_china.png-a48fe0313e7b4d6c7f6b48dec61391aa.ctex"]
 
 [params]
 

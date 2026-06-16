@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://fnu4omo8q4t4hi2qnyjp"
-path="res://.godot/imported/town_hall_viking_l10.png-a52916bb8bf4b018f0e4ad52354ea726.ctex"
+uid="uid://cjcxj2y5xojt6"
+path="res://.godot/imported/town_hall_viking_l10.png-d91d1c29cf30e56a885cdbb7ad98a510.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/buildings/town_hall_viking_l10.png"
-dest_files=["res://.godot/imported/town_hall_viking_l10.png-a52916bb8bf4b018f0e4ad52354ea726.ctex"]
+dest_files=["res://.godot/imported/town_hall_viking_l10.png-d91d1c29cf30e56a885cdbb7ad98a510.ctex"]
 
 [params]
 

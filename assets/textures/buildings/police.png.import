@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ytmrt6w4o2riv57n59sq"
-path="res://.godot/imported/police.png-695a5ddabfca75bd368ceabf8ce55a48.ctex"
+uid="uid://yihj7ffaexoe"
+path="res://.godot/imported/police.png-629d42f9ef341bae76231624edf293e6.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/buildings/police.png"
-dest_files=["res://.godot/imported/police.png-695a5ddabfca75bd368ceabf8ce55a48.ctex"]
+dest_files=["res://.godot/imported/police.png-629d42f9ef341bae76231624edf293e6.ctex"]
 
 [params]
 

@@ -45,15 +45,20 @@ func _clear_children():
 
 # ===== 地形渲染：烘焙到 Sprite2D 大纹理 =====
 func _render_terrain_texture():
-	# 加载地形贴图
-	var tile_texes := {}
+	# 直接从 PNG 文件加载原始图像数据（绕过 Godot 导入系统）
+	var tile_images := {}
 	var names_arr = ["grass_0","grass_1","grass_2","water_0","water_1","water_2",
 		"sand","forest","mountain","dirt"]
 	for n in names_arr:
-		var p = "res://assets/textures/isometric/%s.png" % n
-		if ResourceLoader.exists(p):
-			tile_texes[n] = load(p)
-	if tile_texes.size() == 0:
+		var png_path = ProjectSettings.globalize_path("res://assets/textures/isometric/%s.png" % n)
+		var file = FileAccess.open(png_path, FileAccess.READ)
+		if file:
+			var buffer = file.get_buffer(file.get_length())
+			file.close()
+			var simg = Image.new()
+			if simg.load_png_from_buffer(buffer) == OK:
+				tile_images[n] = simg
+	if tile_images.size() == 0:
 		return
 	
 	# 计算纹理尺寸：等距地图的完整矩形区域
@@ -82,12 +87,10 @@ func _render_terrain_texture():
 			var nt = _grid_map.get_natural_terrain(gx, gy)
 			var names = terrain_map.get(nt, ["grass_0"])
 			var chosen = names[hash(str(gx)+","+str(gy)) % names.size()]
-			var src = tile_texes.get(chosen)
-			if src == null:
+			var simg = tile_images.get(chosen)
+			if simg == null:
 				continue
-			var simg = src.get_image()
-			if simg:
-				img.blit_rect(simg, Rect2i(0, 0, TILE_W, TILE_H), Vector2i(tx, ty))
+			img.blit_rect(simg, Rect2i(0, 0, TILE_W, TILE_H), Vector2i(tx, ty))
 				drawn += 1
 	
 	print("[TERRAIN] 地形图渲染: ", drawn, " tiles → ", img_w, "x", img_h)

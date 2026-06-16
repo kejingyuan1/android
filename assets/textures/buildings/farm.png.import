@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://e3832j3gapj5umr2npen"
-path="res://.godot/imported/farm.png-e22188d287fa912899e57e7927f90389.ctex"
+uid="uid://c3yc31a6txmn"
+path="res://.godot/imported/farm.png-298b1499348da66dd7c92e92543579e9.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/buildings/farm.png"
-dest_files=["res://.godot/imported/farm.png-e22188d287fa912899e57e7927f90389.ctex"]
+dest_files=["res://.godot/imported/farm.png-298b1499348da66dd7c92e92543579e9.ctex"]
 
 [params]
 

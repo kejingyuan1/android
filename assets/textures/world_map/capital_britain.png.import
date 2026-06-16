@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://e1ojw0awdi2cjum21lrl"
-path="res://.godot/imported/capital_britain.png-33d3267866bc48ce572550bac1627735.ctex"
+uid="uid://cfafncwfvrpjt"
+path="res://.godot/imported/capital_britain.png-d8894f2127c8466c4593f6d1116608d1.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/world_map/capital_britain.png"
-dest_files=["res://.godot/imported/capital_britain.png-33d3267866bc48ce572550bac1627735.ctex"]
+dest_files=["res://.godot/imported/capital_britain.png-d8894f2127c8466c4593f6d1116608d1.ctex"]
 
 [params]
 

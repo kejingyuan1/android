@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://k0ckn1f9ugd37txqzx7a"
-path="res://.godot/imported/town_hall_japanese_l9.png-859f4102ad7d1d6cdafbab0a72fb4c96.ctex"
+uid="uid://bmmnjiathjhnw"
+path="res://.godot/imported/town_hall_japanese_l9.png-830a95509f123ab34e866a63c59fb00d.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/buildings/town_hall_japanese_l9.png"
-dest_files=["res://.godot/imported/town_hall_japanese_l9.png-859f4102ad7d1d6cdafbab0a72fb4c96.ctex"]
+dest_files=["res://.godot/imported/town_hall_japanese_l9.png-830a95509f123ab34e866a63c59fb00d.ctex"]
 
 [params]
 
