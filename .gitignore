@@ -1,10 +1,8 @@
 # Godot specific
 .godot/
-*.import
-*.uid
+.import/
 export.cfg
 export_presets.cfg
-.import/
 
 # OS generated files
 .DS_Store
