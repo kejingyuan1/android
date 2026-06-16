@@ -91,7 +91,7 @@ func _render_terrain_texture():
 			if simg == null:
 				continue
 			img.blit_rect(simg, Rect2i(0, 0, TILE_W, TILE_H), Vector2i(tx, ty))
-				drawn += 1
+			drawn += 1
 	
 	print("[TERRAIN] 地形图渲染: ", drawn, " tiles → ", img_w, "x", img_h)
 	
