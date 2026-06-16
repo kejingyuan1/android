@@ -1,7 +1,7 @@
 """
-生成高质量的等距地形纹理 v2
-每个纹理 64x32 菱形，大幅提升细节
-使用分层噪点、微纹理和自然色彩变化
+生成高质量的等距地形纹理 v2 — 修复银灰色三角问题
+核心改动：移除Y轴渐变（不再 center-bright, edge-dark），使菱形整体色调均匀
+保留细节纹理（草叶、波浪、沙粒、树冠、雪顶）
 """
 from PIL import Image, ImageDraw
 import random, math, os
@@ -27,15 +27,10 @@ def simple_noise(x, y, seed=0):
     n = hash((x + seed * 1000, y + seed * 2000)) & 0xFFFF
     return n / 65535.0
 
-def draw_tile_pixels(draw_fn, *args):
-    """通用图块绘制"""
-    img = draw_fn.__self__._image if hasattr(draw_fn, '__self__') else None
-    draw_fn(*args)
-
 # ============ 草地纹理 ============
 def create_grass(img, ox, oy, variant=0):
     pixels = img.load()
-    base_green = [(58, 145, 38), (62, 152, 42), (52, 135, 32)][variant]
+    base_green = [(65, 155, 45), (70, 162, 50), (58, 145, 38)][variant]
     
     for y in range(TILE_H):
         for x in range(TILE_W):
@@ -44,15 +39,9 @@ def create_grass(img, ox, oy, variant=0):
                 continue
             
             px, py = ox+x, oy+y
-            ry = (y - CY) / CY
             
-            # 基础草色：沿y轴渐变色增加立体感
-            depth_factor = 1.0 - abs(ry) * 0.3  # 中心亮，边缘暗
-            base = (
-                int(base_green[0] * depth_factor),
-                int(base_green[1] * depth_factor),
-                int(base_green[2] * depth_factor)
-            )
+            # 基础草色：均匀色调，无Y轴渐变（解决银灰色三角）
+            base = base_green
             c = noise_color(base, 12)
             
             # 自然色斑块（大的浅色/深色区域）
@@ -65,8 +54,7 @@ def create_grass(img, ox, oy, variant=0):
             # 草丛细节（细长的草叶线条）
             grass_seed = hash((x, y, variant*99)) & 0xFFFF
             if grass_seed < 600:  # 约3.6%
-                # 画一根草叶
-                blade_angle = (grass_seed % 5) - 2  # -2 to 2
+                blade_angle = (grass_seed % 5) - 2
                 for bx in range(max(0, x-1), min(TILE_W, x+2)):
                     for by in range(max(0, y-2), min(TILE_H, y+3)):
                         if abs(bx-x) <= 1 and abs(by-y) <= 2:
@@ -77,9 +65,9 @@ def create_grass(img, ox, oy, variant=0):
             
             # 小黄花（约1.5%概率）
             if hash((x, y, variant*77+33)) % 256 < 4:
-                for dx in range(-1, 2):
-                    for dy in range(-1, 2):
-                        nx, ny = x+dx, y+dy
+                for dx1 in range(-1, 2):
+                    for dy1 in range(-1, 2):
+                        nx, ny = x+dx1, y+dy1
                         if 0 <= nx < TILE_W and 0 <= ny < TILE_H and is_in_diamond(nx, ny):
                             pixels[ox+nx, oy+ny] = (240, 230, 60)
                             break
@@ -89,7 +77,7 @@ def create_grass(img, ox, oy, variant=0):
 # ============ 水域纹理 ============
 def create_water(img, ox, oy, variant=0):
     pixels = img.load()
-    base_blue = [(40, 95, 180), (45, 105, 190), (35, 90, 170)][variant]
+    base_blue = [(45, 105, 190), (50, 115, 200), (40, 95, 180)][variant]
     
     for y in range(TILE_H):
         for x in range(TILE_W):
@@ -187,9 +175,8 @@ def create_mountain(img, ox, oy):
             
             ry = (y - CY) / CY
             
-            # 岩石灰（底部亮，顶部暗）
-            height = 1.0 - abs(ry)
-            base_gray = (100 + int(height * 50), 95 + int(height * 45), 90 + int(height * 40))
+            # 岩石灰（均匀色调，修复银灰色三角问题）
+            base_gray = (120, 115, 110)
             
             # 岩石纹理条纹
             stripe = simple_noise(x//3, y, 555)
@@ -236,7 +223,6 @@ def create_dirt(img, ox, oy):
 
 # ============ 高亮/虚影/阴影 ============
 def create_overlay_textures(out_dir):
-    # 高亮（半透明黄）
     hl = Image.new('RGBA', (TILE_W, TILE_H), (0,0,0,0))
     for y in range(TILE_H):
         for x in range(TILE_W):
@@ -244,7 +230,6 @@ def create_overlay_textures(out_dir):
                 hl.putpixel((x, y), (255, 255, 0, 60))
     hl.save(os.path.join(out_dir, "highlight.png"))
     
-    # 虚影（半透明白）
     gh = Image.new('RGBA', (TILE_W, TILE_H), (0,0,0,0))
     for y in range(TILE_H):
         for x in range(TILE_W):
@@ -252,7 +237,6 @@ def create_overlay_textures(out_dir):
                 gh.putpixel((x, y), (255, 255, 255, 80))
     gh.save(os.path.join(out_dir, "ghost.png"))
     
-    # 阴影
     sh = Image.new('RGBA', (TILE_W, TILE_H), (0,0,0,0))
     for y in range(TILE_H):
         for x in range(TILE_W):
@@ -266,7 +250,7 @@ def create_overlay_textures(out_dir):
 def main():
     out_dir = "C:/Users/WIN11/WorkBuddy/2026-06-01-16-27-34/city-builder/assets/textures/isometric"
     
-    print("Generating high-quality isometric terrain textures v2...")
+    print("Generating isometric terrain textures v2 (fix silver triangle)...")
     random.seed(42)
     
     tiles = {
@@ -287,16 +271,13 @@ def main():
         draw_fn(img, 0, 0)
         path = os.path.join(out_dir, f"{name}.png")
         img.save(path)
-        # Count non-transparent pixels
         w, h = img.size
         content = sum(1 for y in range(h) for x in range(w) if img.getpixel((x,y))[3] > 10)
         print(f"  {name}: {w}x{h}, {content} content pixels")
     
-    # 生成覆盖层
     create_overlay_textures(out_dir)
     print("  overlay textures (highlight, ghost, shadow) generated")
-    
-    print("\\nDone!")
+    print("\nDone!")
 
 if __name__ == "__main__":
     main()

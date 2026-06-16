@@ -101,43 +101,16 @@ def flood_fill_remove_bg(img):
 def make_door_transparent(img):
     """
     使柱子之间的门洞区域镂空透明。
-    将门洞中部 (x=388-421, y=517-615) 设为全透明。
-    同时将门洞区域 x=366-434 中非柱子边缘的像素也设为透明，
-    确保门洞完全透出草地。
+    仅清理门洞中部 x=388-421, y=517-615，保留门框/柱子。
     """
     pixels = img.load()
     w, h = img.size
     removed = 0
-    
-    # 内部门洞核心区域：完全透明
     for y in range(517, min(615, h)):
         for x in range(388, min(421, w)):
             if pixels[x, y][3] > 10:
                 pixels[x, y] = (0, 0, 0, 0)
                 removed += 1
-    
-    # 门洞扩展区域 x=366-434：如果像素不是暖色（门框/柱子），也设为透明
-    # 暖色门框特征：r > g+30 或 (r > 150 and g > 80 and b < 80)
-    for y in range(515, min(640, h)):
-        for x in range(366, min(434, w)):
-            r, g, b, a = pixels[x, y]
-            if a < 10:
-                continue
-            is_frame = False
-            # 门框/柱子保留条件
-            if r > 180 and g > 100 and b < 80:
-                is_frame = True  # 红色柱子
-            elif r > g + 30 and g > 80:
-                is_frame = True  # 暖色装饰
-            elif r > 200 and g > 150 and b < 60:
-                is_frame = True  # 金色
-            elif r < 60 and g < 60 and b < 60:
-                is_frame = True  # 深色（可能是黑暗内部）
-            
-            if not is_frame:
-                pixels[x, y] = (0, 0, 0, 0)
-                removed += 1
-    
     return img, removed
 
 
@@ -212,8 +185,7 @@ def add_level_upgrades(img, level):
     flag_x = canvas.width // 2
     if level >= 2:
         flag_y = y_offset - 10
-        draw.polygon([(flag_x, flag_y), (flag_x, flag_y - 25), (flag_x + 15, flag_y - 12)], fill=(200, 50, 50, 255))
-        draw.line([(flag_x, flag_y), (flag_x, flag_y - 25)], fill=(120, 60, 30, 255), width=2)
+        draw.ellipse([flag_x - 6, flag_y - 6, flag_x + 6, flag_y + 6], fill=(255, 100, 100, 255))
     if level >= 3:
         draw.polygon([(flag_x - 20, y_offset - 15), (flag_x - 20, y_offset - 35), (flag_x - 5, y_offset - 25)], fill=(200, 50, 50, 255))
         draw.line([(flag_x - 20, y_offset - 15), (flag_x - 20, y_offset - 35)], fill=(120, 60, 30, 255), width=2)
