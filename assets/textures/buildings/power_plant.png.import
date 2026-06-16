@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cejpthlq7nvqg"
-path="res://.godot/imported/power_plant.png-ac74fdc27bc4bf8b3fcea57a24e03885.ctex"
+uid="uid://pqud5f6k0ehe2w4l6qlj"
+path="res://.godot/imported/power_plant.png-2ef5450579d0868b9e5c96dceb962bb2.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/buildings/power_plant.png"
-dest_files=["res://.godot/imported/power_plant.png-ac74fdc27bc4bf8b3fcea57a24e03885.ctex"]
+dest_files=["res://.godot/imported/power_plant.png-2ef5450579d0868b9e5c96dceb962bb2.ctex"]
 
 [params]
 
@@ -31,7 +31,7 @@ process/channel_remap/red=0
 process/channel_remap/green=1
 process/channel_remap/blue=2
 process/channel_remap/alpha=3
-process/fix_alpha_border=true
+process/fix_alpha_border=false
 process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
