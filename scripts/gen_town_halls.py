@@ -13,7 +13,7 @@ import os, math, random
 from collections import deque
 
 BASE = "C:/Users/WIN11/WorkBuddy/2026-06-01-16-27-34/city-builder/assets/textures/buildings"
-TEMPLATE = os.path.join(BASE, "town_hall_template.png")
+TEMPLATE = os.path.join(BASE, "town_hall_template_v2.png")
 
 CIV_NAMES = ["chinese", "roman", "british", "egyptian", "japanese", "viking"]
 
@@ -30,35 +30,12 @@ CIV_TINTS = {
 def remove_watermark(img):
     """
     精确去除右下角水印文字。
-    模板(799x921)的水印在 y=865-913, x=473-548，在建筑底部平台下方 20px 透明间隙之后。
-    水印文字为近白色(R≈G≈B≈237-245)，在平台右侧。
-    策略：找到 y>=865 且 x>514 的近灰色像素，设为透明。
+    策略：找到底部区域的近白色小色差孤立像素。
     """
     pixels = img.load()
     w, h = img.size
-    
-    # 对于小于 800x921 的模板才使用精确坐标
-    if w == 799 and h == 921:
-        removed = 0
-        for y in range(865, min(914, h)):
-            for x in range(515, min(549, w)):
-                r, g, b, a = pixels[x, y]
-                if a > 10:
-                    # 水印文字 = 近白色小色差像素
-                    pixels[x, y] = (0, 0, 0, 0)
-                    removed += 1
-        return img, removed
-    else:
-        # 通用策略：在底部区域找孤立的近白色像素群
-        return _remove_watermark_generic(img)
 
-
-def _remove_watermark_generic(img):
-    """通用水印去除——针对裁剪后的各文明变体"""
-    pixels = img.load()
-    w, h = img.size
-    
-    # 寻找底部区域中非建筑结构的孤立亮像素
+    # 扫描底部区域中非建筑结构的孤立亮像素
     removed = 0
     for y in range(max(0, h-80), h):
         for x in range(max(0, w-150), w):
@@ -101,16 +78,76 @@ def flood_fill_remove_bg(img):
 def make_door_transparent(img):
     """
     使柱子之间的门洞区域镂空透明。
-    仅清理门洞中部 x=388-421, y=517-615，保留门框/柱子。
+    动态检测：在图像底部区域自动找到两列柱子之间的间隙，清空间隙像素。
     """
     pixels = img.load()
     w, h = img.size
     removed = 0
-    for y in range(517, min(615, h)):
-        for x in range(388, min(421, w)):
+
+    # 在 y=50%~75% 高度范围内，找到 x 方向的透明间隙（柱子之间的门洞）
+    mid_y_start = int(h * 0.55)
+    mid_y_end = int(h * 0.72)
+
+    # 扫描每行的透明间隙，聚合出门的左右边界
+    door_left = w
+    door_right = 0
+    door_top = h
+    door_bottom = 0
+
+    for y in range(mid_y_start, mid_y_end):
+        # 找到这一行中所有不透明像素的x范围
+        opaque_x = [x for x in range(w) if pixels[x, y][3] > 10]
+        if len(opaque_x) < 5:
+            continue
+
+        # 找到最大的连续不透明区间之间的间隙
+        gaps = []
+        prev = opaque_x[0]
+        for cx in opaque_x[1:]:
+            if cx - prev > 8:  # >8px的间隙
+                gaps.append((prev + 1, cx - 1))
+            prev = cx
+
+        # 找到最宽的间隙（应该就是门洞）
+        for gs, ge in gaps:
+            gw = ge - gs
+            if gw > 20:  # 门洞至少20px宽
+                if gs < door_left:
+                    door_left = gs
+                if ge > door_right:
+                    door_right = ge
+                if y < door_top:
+                    door_top = y
+                if y > door_bottom:
+                    door_bottom = y
+
+    # 如果没有找到门洞，使用默认坐标
+    if door_right <= door_left:
+        door_left = max(0, w // 2 - 30)
+        door_right = min(w, w // 2 + 30)
+        door_top = mid_y_start
+        door_bottom = mid_y_end
+
+    # 加一点内边距（不要清掉柱子本身）
+    door_center = (door_left + door_right) // 2
+    door_left = max(0, door_center - 18)
+    door_right = min(w, door_center + 18)
+
+    # 扩大垂直范围，确保门楣也被清掉
+    clear_top = max(0, door_top - 5)
+    clear_bottom = min(h, door_bottom + 5)
+
+    # 执行清除
+    for y in range(clear_top, clear_bottom):
+        for x in range(door_left, door_right):
             if pixels[x, y][3] > 10:
                 pixels[x, y] = (0, 0, 0, 0)
                 removed += 1
+
+    if removed > 0:
+        print(f"  [门洞] 动态检测: x={door_left}-{door_right} y={clear_top}-{clear_bottom} 清除{removed}像素")
+    else:
+        print(f"  [门洞] 未找到门洞间隙, 跳过")
     return img, removed
 
 
@@ -235,78 +272,83 @@ def main():
     print("=" * 60)
     print("生成大本营纹理：10级 × 6文明")
     print("=" * 60)
-    
+
     if not os.path.exists(TEMPLATE):
         print(f"[ERROR] 模板不存在: {TEMPLATE}")
         return
-    
+
+    # 加载原始模板（保持不裁剪！）
     template = Image.open(TEMPLATE).convert("RGBA")
     print(f"模板尺寸: {template.size}")
-    
-    # === 第1步：清理模板 ===
-    print("\n--- 第1步：清理模板 ---")
+
+    # 对模板做永久性清理（操作在原尺寸上进行）
+    print("\n--- 清理模板 ---")
     template, wm = remove_watermark(template)
     print(f"  去除水印: {wm} 像素")
     template, bg = flood_fill_remove_bg(template)
     print(f"  去除背景残留: {bg} 像素")
     template, dr = make_door_transparent(template)
     print(f"  门洞镂空: {dr} 像素")
-    template = crop_to_content(template, margin=6)
-    print(f"  裁剪后尺寸: {template.size}")
-    
-    # 保存清理后的模板
-    template.save(TEMPLATE)
-    print(f"  已保存清理版模板")
-    
+    print(f"  清理后尺寸: {template.size}")
+
+    # ===== 关键修改：只保存清理版模板，不裁剪！ =====
+    # 裁剪操作在每个文明生成时单独执行
+    # 这样门洞坐标始终在原始图像空间中是准确的
+
     out_dir = BASE
     random.seed(42)
-    
+
     for civ in CIV_NAMES:
         tint = CIV_TINTS[civ]
         print(f"\n--- {civ.upper()} ---")
-        
-        # 第2步：分区HSL色调偏移
-        civ_base = apply_tint(template.copy(), 
+
+        # 复制已清理的全尺寸模板
+        civ_img = template.copy()
+
+        # 第2步：分区HSL色调偏移（全尺寸）
+        civ_img = apply_tint(civ_img,
             tint["roof_hue"], tint["wall_hue"], tint["base_hue"],
             tint["sat"], tint["lum"])
-        
-        # 第3步：HSL之后再次确保门洞镂空
-        civ_base, dr2 = make_door_transparent(civ_base)
+
+        # 第3步：HSL之后再次确保门洞镂空（全尺寸，坐标正确）
+        civ_img, dr2 = make_door_transparent(civ_img)
         if dr2 > 0:
             print(f"  HSL后额外镂空门洞: {dr2} 像素")
-        
-        # 第4步：再次去除水印
-        civ_base, wm2 = remove_watermark(civ_base)
+
+        # 第4步：再次去除水印（全尺寸）
+        civ_img, wm2 = remove_watermark(civ_img)
         if wm2 > 0:
             print(f"  HSL后额外去水印: {wm2} 像素")
-        
-        # 第5步：裁剪
-        civ_base = crop_to_content(civ_base, margin=6)
-        
+
+        # 第5步：裁剪到内容（每个文明独立裁剪）
+        civ_img = crop_to_content(civ_img, margin=6)
+        print(f"  裁剪后: {civ_img.size}")
+
         for level in range(1, 11):
             if level == 1:
-                img = civ_base
+                img = civ_img.copy()
             else:
-                img = add_level_upgrades(civ_base, level)
-            
-            filename = f"town_hall_{civ}_l{level}.png"
+                img = add_level_upgrades(civ_img, level)
+
+            # 使用 _v2 后缀
+            filename = f"town_hall_{civ}_l{level}_v2.png"
             out_path = os.path.join(out_dir, filename)
             img.save(out_path)
             print(f"  L{level}: {filename} -> {img.size}")
-    
+
     # === 验证 ===
     print("\n" + "=" * 60)
     print("验证所有输出纹理...")
     all_clean = True
     for civ in CIV_NAMES:
         for level in [1, 5, 10]:
-            path = os.path.join(out_dir, f"town_hall_{civ}_l{level}.png")
+            path = os.path.join(out_dir, f"town_hall_{civ}_l{level}_v2.png")
             if not os.path.exists(path):
                 continue
             img = Image.open(path).convert("RGBA")
             w2, h2 = img.size
-            
-            # 验证：右下角 150x80 找近白色小色差像素
+
+            # 验证1：右下角找水印
             wm_count = 0
             for y in range(max(0, h2-80), h2):
                 for x in range(max(0, w2-150), w2):
@@ -317,13 +359,27 @@ def main():
                         lum = (r+g+b)//3
                         if lum > 130 and max_diff < 40:
                             wm_count += 1
-            
+
+            # 验证2：门洞区域（中间50%宽度、55%-72%高度范围）的透明占比
+            dx1 = int(w2 * 0.50)
+            dx2 = int(w2 * 0.80)
+            dy1 = int(h2 * 0.55)
+            dy2 = int(h2 * 0.72)
+            opaque_door = 0
+            total_door = 0
+            for y in range(dy1, dy2):
+                for x in range(dx1, dx2):
+                    if img.getpixel((x, y))[3] > 10:
+                        opaque_door += 1
+                    total_door += 1
+            door_transparent_pct = (total_door - opaque_door) / total_door * 100 if total_door > 0 else 0
+
             if wm_count > 0:
-                print(f"  ⚠ {civ}_l{level}.png: 右下角残留 {wm_count} 个疑似水印像素")
+                print(f"  ⚠ {civ}_l{level}: 右下角残留 {wm_count} 个疑似水印像素")
                 all_clean = False
             else:
-                print(f"  ✓ {civ}_l{level}.png: 水印已清除")
-    
+                print(f"  ✓ {civ}_l{level}: 水印已清除, 门洞透明显{door_transparent_pct:.0f}%")
+
     if all_clean:
         print("\n✅ 所有纹理水印彻底清除！")
     else:
