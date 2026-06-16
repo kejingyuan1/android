@@ -215,18 +215,18 @@ func clear_all_roads():
 	_road_sprites.clear()
 
 func _get_road_coords(cx, cy):
-	var road_type = _grid_map.TerrainType.ROAD if _grid_map else 1
+	# 计算 4 邻域连接掩码: bit0=上, bit1=下, bit2=左, bit3=右
+	var rt = _grid_map.TerrainType.ROAD if _grid_map else 1
 	var is_road = func(x, y):
 		var c = _grid_map.get_cell(x, y) if _grid_map else null
-		return c and c.terrain == road_type
-	var u = cy > 0 and is_road.call(cx, cy-1)
-	var d = cy < MAP_HEIGHT-1 and is_road.call(cx, cy+1)
-	var l = cx > 0 and is_road.call(cx-1, cy)
-	var r = cx < MAP_WIDTH-1 and is_road.call(cx+1, cy)
-	if (l or r) and (u or d): return Vector2i(0, 1)
-	elif l or r: return Vector2i(0, 0)
-	elif u or d: return Vector2i(1, 0)
-	else: return Vector2i(1, 1)
+		return c and c.terrain == rt
+	var mask := 0
+	if cy > 0 and is_road.call(cx, cy-1): mask |= 1
+	if cy < MAP_HEIGHT-1 and is_road.call(cx, cy+1): mask |= 2
+	if cx > 0 and is_road.call(cx-1, cy): mask |= 4
+	if cx < MAP_WIDTH-1 and is_road.call(cx+1, cy): mask |= 8
+	# atlas坐标 = (mask%4, mask//4)，基于4列×4行的spritesheet布局
+	return Vector2i(mask % 4, mask / 4)
 
 # ===== 高亮 & 虚影 =====
 var _highlight = null
