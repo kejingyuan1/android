@@ -14,6 +14,7 @@ var _terrain_sprite = null
 var _road_container = null
 var _road_sprites = {}
 var _road_sheets = {}
+var _seed_val := 0
 
 func _ready():
 	_preload_road_textures()
@@ -30,8 +31,9 @@ func _preload_road_textures():
 			else:
 				print("[TEX_LOAD]   加载失败: load()返回null")
 
-func setup(grid_map_node, _seed_val = 0):
+func setup(grid_map_node, seed_val = 0):
 	_grid_map = grid_map_node
+	_seed_val = seed_val
 
 func generate():
 	if _grid_map == null:
