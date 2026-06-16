@@ -1496,11 +1496,11 @@ func _place_town_hall():
 		if load_result == OK:
 			print("[TEX_LOAD]   图片尺寸: ", img.get_width(), "x", img.get_height())
 			print("[TEX_LOAD]   图片格式: ", img.get_format(), " (RGBA8=", Image.FORMAT_RGBA8, " RF=", Image.FORMAT_RF, ")")
-			# 验证门洞区域Alpha
-			var mid_x: int = img.get_width() / 2
-			var mid_y: int = img.get_height() * 2 / 3
-			var test_px := img.get_pixel(mid_x, mid_y)
-			print("[TEX_LOAD]   门洞区像素(", mid_x, ",", mid_y, "): RGBA=(", test_px.r, ",", test_px.g, ",", test_px.b, ",", test_px.a, ")")
+			# 验证门洞区域Alpha（真实门洞x~+65%宽度, y~+65%高度）
+			var door_x: int = int(img.get_width() * 0.65)
+			var door_y: int = int(img.get_height() * 0.66)
+			var test_px := img.get_pixel(door_x, door_y)
+			print("[TEX_LOAD]   门洞(", door_x, ",", door_y, "): RGBA=(", test_px.r, ",", test_px.g, ",", test_px.b, ",", test_px.a, ")")
 			texture = ImageTexture.create_from_image(img)
 			print("[TEX_LOAD]   ImageTexture创建: ", texture != null)
 	
