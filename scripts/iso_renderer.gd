@@ -47,95 +47,353 @@ func _clear_children():
 	for c in get_children():
 		c.queue_free()
 
-# ===== 地形渲染：烘焙到 Sprite2D 大纹理 =====
+# ===== 地形渲染：精致3D等距地形，烘焙到 Sprite2D 大纹理 =====
+# 每个菱形 tile 有 3D 光照：顶部亮（受光面）、左下中灰（侧光面）、右下暗（背光面）
+# 山脉向上突起带雪顶，水域带波纹，森林有树冠纹理
+
+# 在菱形内绘制带3D光照的像素
+func _iso_set_pixel_3d(img: Image, x: int, y: int, base_col: Color, cx: float, cy: float):
+	# 计算像素在菱形中的归一化位置
+	var dx: float = float(x) / cx - 1.0  # -1..1
+	var dy: float = float(y) / cy - 1.0  # -1..1
+	
+	# 3D 光照：模拟光源从左上方照射
+	# 上方平坦区域 → 亮度最高 (top face)
+	# 左下方 → 中等亮度 (left face)
+	# 右下方 → 较暗 (right face / shadow)
+	var brightness: float = 1.0
+	
+	if dy > 0:
+		# 下半部分（正面/侧面）按位置分左右
+		if x < cx:
+			# 左半（左下侧光面）: 亮度 0.75~0.9
+			var t: float = abs(dx) / (1.0 - abs(dy) + 0.001)
+			brightness = 0.92 - t * 0.17
+		else:
+			# 右半（右下背光面）: 亮度 0.55~0.7
+			var t: float = dx / (1.0 - abs(dy) + 0.001)
+			brightness = 0.72 - t * 0.17
+	else:
+		# 上半部分（顶面）: 亮度 0.95~1.05
+		var dist_from_edge: float = abs(dy)  # 0 at center, 1 at top
+		brightness = 1.05 - dist_from_edge * 0.08
+	
+	brightness = clampf(brightness, 0.45, 1.15)
+	
+	img.set_pixel(x, y, Color(
+		clampf(base_col.r * brightness, 0.0, 1.0),
+		clampf(base_col.g * brightness, 0.0, 1.0),
+		clampf(base_col.b * brightness, 0.0, 1.0),
+		1.0
+	))
+
+# 生成单个地形 tile（64x32 菱形，带3D光照和纹理细节）
+func _gen_grass_tile(variant: int, rng: RandomNumberGenerator) -> Image:
+	var img := Image.create(TILE_W, TILE_H, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var cx: float = TILE_W / 2.0
+	var cy: float = TILE_H / 2.0
+	var base := Color(0.28, 0.66, 0.22)
+	
+	for y in range(TILE_H):
+		for x in range(TILE_W):
+			var dx: float = abs(float(x) - cx) / cx
+			var dy: float = abs(float(y) - cy) / cy
+			if dx + dy > 1.0:
+				continue
+			
+			# 3D光照
+			var col := base
+			_iso_set_pixel_3d(img, x, y, col, cx, cy)
+			
+			# 纹理细节：随机草点
+			var hash_val: int = (x * 73856093 + y * 19349663 + variant * 83492791) & 0x7FFFFFFF
+			if hash_val % 13 == 0:
+				# 暗色草斑
+				var dark := Color(
+					clampf(col.r - 0.04, 0, 1),
+					clampf(col.g - 0.04, 0, 1),
+					clampf(col.b - 0.04, 0, 1), 1)
+				img.set_pixel(x, y, dark)
+			elif hash_val % 23 == 0:
+				# 亮色高光草
+				var light := Color(
+					clampf(col.r + 0.06, 0, 1),
+					clampf(col.g + 0.06, 0, 1),
+					clampf(col.b + 0.03, 0, 1), 1)
+				img.set_pixel(x, y, light)
+	return img
+
+func _gen_water_tile(variant: int, rng: RandomNumberGenerator) -> Image:
+	var img := Image.create(TILE_W, TILE_H, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var cx: float = TILE_W / 2.0
+	var cy: float = TILE_H / 2.0
+	var base := Color(0.16, 0.38, 0.72)
+	
+	for y in range(TILE_H):
+		for x in range(TILE_W):
+			var dx: float = abs(float(x) - cx) / cx
+			var dy: float = abs(float(y) - cy) / cy
+			if dx + dy > 1.0:
+				continue
+			
+			_iso_set_pixel_3d(img, x, y, base, cx, cy)
+			
+			# 水面波纹（水平线）
+			var wave: int = (y + variant * 4) / 4  # 每4行一波
+			if wave % 3 == 0:
+				var col := img.get_pixel(x, y)
+				img.set_pixel(x, y, Color(
+					clampf(col.r + 0.08, 0, 1),
+					clampf(col.g + 0.10, 0, 1),
+					clampf(col.b + 0.12, 0, 1), 1))
+			
+			# 水面闪烁（随机亮点）
+			var hash_val: int = (x * 193939 + y * 8380417 + variant) & 0x7FFFFFFF
+			if hash_val % 67 == 0 and dx + dy < 0.85:
+				img.set_pixel(x, y, Color(0.9, 0.95, 1.0, 0.9))
+	return img
+
+func _gen_sand_tile(rng: RandomNumberGenerator) -> Image:
+	var img := Image.create(TILE_W, TILE_H, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var cx: float = TILE_W / 2.0
+	var cy: float = TILE_H / 2.0
+	var base := Color(0.82, 0.75, 0.58)
+	
+	for y in range(TILE_H):
+		for x in range(TILE_W):
+			var dx: float = abs(float(x) - cx) / cx
+			var dy: float = abs(float(y) - cy) / cy
+			if dx + dy > 1.0:
+				continue
+			
+			_iso_set_pixel_3d(img, x, y, base, cx, cy)
+			
+			# 沙粒纹理
+			var hv: int = (x * 27449 + y * 77237) & 0x7FFFFFFF
+			if hv % 9 == 0:
+				var c := img.get_pixel(x, y)
+				img.set_pixel(x, y, Color(clampf(c.r+0.04,0,1), clampf(c.g+0.04,0,1), clampf(c.b+0.02,0,1), 1))
+			elif hv % 15 == 0:
+				var c := img.get_pixel(x, y)
+				img.set_pixel(x, y, Color(clampf(c.r-0.03,0,1), clampf(c.g-0.03,0,1), clampf(c.b-0.02,0,1), 1))
+	return img
+
+func _gen_forest_tile(variant: int, rng: RandomNumberGenerator) -> Image:
+	var img := Image.create(TILE_W, TILE_H + 8, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var cx: float = TILE_W / 2.0
+	var cy: float = TILE_H / 2.0 + 4  # 树冠向上突起
+	var base := Color(0.10, 0.35, 0.09)
+	
+	for y in range(TILE_H + 8):
+		for x in range(TILE_W):
+			var ex: float = abs(float(x) - cx) / cx
+			var ey: float = abs(float(y) - cy) / cy
+			
+			# 树冠不是完美菱形，按 x 偏移做圆顶效果
+			var canopy_r: float = 0.9 + abs(float(x) - cx) / cx * 0.15
+			if ex + ey > canopy_r:
+				continue
+			
+			# 树冠基本色
+			var col := Color(0.10, 0.35, 0.09)
+			
+			# 3D光照效果
+			var bright: float = 1.0
+			if y <= cy:
+				bright = 1.05 - ey * 0.1
+			else:
+				var tx: float = float(x) / cx - 1.0
+				if tx < 0:
+					bright = 0.88 + tx * 0.1
+				else:
+					bright = 0.70 - tx * 0.1
+			bright = clampf(bright, 0.5, 1.15)
+			
+			# 树冠凸起纹理
+			var hv: int = (x * 31627 + y * 64783 + variant * 911) & 0x7FFFFFFF
+			if hv % 7 == 0:
+				col = Color(0.08, 0.28, 0.06)
+			elif hv % 11 == 0:
+				col = Color(0.13, 0.40, 0.11)
+			
+			var r: float = clampf(col.r * bright, 0, 1)
+			var g: float = clampf(col.g * bright, 0, 1)
+			var b: float = clampf(col.b * bright, 0, 1)
+			img.set_pixel(x, y, Color(r, g, b, 1))
+	return img
+
+func _gen_mountain_tile(variant: int, rng: RandomNumberGenerator) -> Image:
+	# 山脉：顶部突起到 32+24=56px 高，雪顶约 1/3 高度
+	var mt_h: int = TILE_H + 24  # 山脉总高度
+	var img := Image.create(TILE_W, mt_h, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var cx: float = TILE_W / 2.0
+	var base_cy: float = TILE_H / 2.0 + 12  # 菱形中心在中间偏下
+	var base := Color(0.48, 0.44, 0.40)
+	var snow := Color(0.95, 0.94, 0.92)
+	
+	for y in range(mt_h):
+		for x in range(TILE_W):
+			var ex: float = abs(float(x) - cx) / cx
+			var y_center: float = base_cy - 8 * (1.0 - ex)  # 山形：越靠边越矮
+			var ey: float = abs(float(y) - y_center) / (y_center + 0.01) if y_center > 0 else 1.5
+			
+			# 山体形状：中部高、边缘矮的锥形
+			if y < y_center * 0.1:
+				continue  # 山顶以上无像素
+			if ex > 1.0:
+				continue
+			
+			# 岩体颜色（带渐变）
+			var rock := base
+			var frac: float = y / float(mt_h)
+			
+			if frac < 0.35 and variant == 0:
+				# 雪顶
+				rock = snow
+			elif frac < 0.40 and variant == 0:
+				# 雪岩过渡
+				var t: float = (frac - 0.35) / 0.05
+				rock = Color(
+					lerp(snow.r, base.r, t),
+					lerp(snow.g, base.g, t),
+					lerp(snow.b, base.b, t))
+			
+			# 3D光照
+			var bright: float = 1.0
+			if x < cx:
+				bright = 0.90 + abs(float(cx - x) / cx) * 0.15
+			else:
+				bright = 0.72 + abs(float(x - cx) / cx) * 0.08
+			bright = clampf(bright, 0.50, 1.15)
+			
+			# 岩缝纹理
+			var hv: int = (x * 683 + y * 1471 + variant * 1297) & 0x7FFFFFFF
+			if hv % 29 == 0:
+				rock = Color(clampf(rock.r-0.06,0,1), clampf(rock.g-0.06,0,1), clampf(rock.b-0.06,0,1))
+			elif hv % 41 == 0:
+				rock = Color(clampf(rock.r+0.04,0,1), clampf(rock.g+0.04,0,1), clampf(rock.b+0.04,0,1))
+			
+			img.set_pixel(x, y, Color(
+				clampf(rock.r * bright, 0, 1),
+				clampf(rock.g * bright, 0, 1),
+				clampf(rock.b * bright, 0, 1), 1))
+	return img
+
+func _gen_dirt_tile(rng: RandomNumberGenerator) -> Image:
+	var img := Image.create(TILE_W, TILE_H, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var cx: float = TILE_W / 2.0
+	var cy: float = TILE_H / 2.0
+	var base := Color(0.55, 0.42, 0.25)
+	
+	for y in range(TILE_H):
+		for x in range(TILE_W):
+			var dx: float = abs(float(x) - cx) / cx
+			var dy: float = abs(float(y) - cy) / cy
+			if dx + dy > 1.0:
+				continue
+			
+			_iso_set_pixel_3d(img, x, y, base, cx, cy)
+			
+			# 土块纹理
+			var hv: int = (x * 13337 + y * 41141) & 0x7FFFFFFF
+			if hv % 11 == 0:
+				var c := img.get_pixel(x, y)
+				img.set_pixel(x, y, Color(clampf(c.r+0.04,0,1), clampf(c.g+0.03,0,1), clampf(c.b+0.02,0,1), 1))
+			elif hv % 19 == 0:
+				var c := img.get_pixel(x, y)
+				img.set_pixel(x, y, Color(clampf(c.r-0.05,0,1), clampf(c.g-0.04,0,1), clampf(c.b-0.03,0,1), 1))
+	return img
+
 func _render_terrain_texture():
-	# 程序化生成地形贴图（完全不依赖任何外部文件，杜绝导入问题）
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _seed_val
+	
+	print("[TERRAIN] 生成精致3D等距地形纹理...")
+	
 	var tile_images := {}
-	var names_arr = ["grass_0","grass_1","grass_2","water_0","water_1","water_2",
-		"sand","forest","mountain","dirt"]
+	# 草坪（3变体）
+	tile_images["grass_0"] = _gen_grass_tile(0, rng)
+	tile_images["grass_1"] = _gen_grass_tile(1, rng)
+	tile_images["grass_2"] = _gen_grass_tile(2, rng)
+	print("[TERRAIN] 草坪3变体生成完毕")
 	
-	# 程序化生成各地形菱形纹理（64x32）
-	for n in names_arr:
-		var simg = Image.create(TILE_W, TILE_H, false, Image.FORMAT_RGBA8)
-		simg.fill(Color(0, 0, 0, 0))
-		
-		# 根据纹理类型选择颜色
-		var base_color := Color(0.27, 0.63, 0.20)  # 默认绿色（草地）
-		if n.begins_with("grass"): base_color = Color(0.27, 0.63, 0.20)
-		elif n.begins_with("water"): base_color = Color(0.18, 0.41, 0.75)
-		elif n == "sand": base_color = Color(0.76, 0.71, 0.55)
-		elif n == "forest": base_color = Color(0.16, 0.39, 0.14)
-		elif n == "mountain": base_color = Color(0.47, 0.45, 0.43)
-		elif n == "dirt": base_color = Color(0.55, 0.45, 0.29)
-		
-		# 轻微随机化（草地变体）
-		var variant_offset := 0.0
-		if n.ends_with("_1"): variant_offset = 0.03
-		elif n.ends_with("_2"): variant_offset = -0.03
-		
-		# 绘制菱形
-		var cx := TILE_W / 2.0
-		var cy := TILE_H / 2.0
-		for y in range(TILE_H):
-			for x in range(TILE_W):
-				var dx: float = abs(float(x) - cx) / cx
-				var dy: float = abs(float(y) - cy) / cy
-				if dx + dy <= 1.0:
-					var r := base_color.r + variant_offset + randf_range(-0.02, 0.02)
-					var g := base_color.g + variant_offset + randf_range(-0.02, 0.02)
-					var b := base_color.b + variant_offset + randf_range(-0.02, 0.02)
-					simg.set_pixel(x, y, Color(clampf(r, 0, 1), clampf(g, 0, 1), clampf(b, 0, 1), 1.0))
-		
-		tile_images[n] = simg
-		# 打印第一个像素供调试
-		var first_color = Color()
-		var found := false
-		for sy in range(TILE_H):
-			for sx in range(TILE_W):
-				if simg.get_pixel(sx, sy).a > 0.5:
-					first_color = simg.get_pixel(sx, sy)
-					found = true
-					break
-			if found: break
-		print("[TERRAIN] 程序生成: ", n, " 首像素=(", int(first_color.r*255), ",", int(first_color.g*255), ",", int(first_color.b*255), ")")
+	# 水域（3变体）
+	tile_images["water_0"] = _gen_water_tile(0, rng)
+	tile_images["water_1"] = _gen_water_tile(1, rng)
+	tile_images["water_2"] = _gen_water_tile(2, rng)
+	print("[TERRAIN] 水域3变体生成完毕")
 	
-	# 计算纹理尺寸：等距地图的完整矩形区域
-	# grid_to_world(0,0) = (0,0); grid_to_world(MAP_W,MAP_H) = ((W-H)*32, (W+H)*16)
+	# 沙地
+	tile_images["sand"] = _gen_sand_tile(rng)
+	print("[TERRAIN] 沙地生成完毕")
+	
+	# 森林（2变体）
+	tile_images["forest_0"] = _gen_forest_tile(0, rng)
+	tile_images["forest_1"] = _gen_forest_tile(1, rng)
+	print("[TERRAIN] 森林2变体生成完毕")
+	
+	# 山脉（2变体）
+	tile_images["mountain_0"] = _gen_mountain_tile(0, rng)
+	tile_images["mountain_1"] = _gen_mountain_tile(1, rng)
+	print("[TERRAIN] 山脉2变体生成完毕")
+	
+	# 土地
+	tile_images["dirt"] = _gen_dirt_tile(rng)
+	print("[TERRAIN] 土地生成完毕")
+	
 	# 计算纹理尺寸
-	var img_w = (MAP_WIDTH + MAP_HEIGHT) * HALF_W  # 12800
-	var img_h = (MAP_WIDTH + MAP_HEIGHT) * HALF_H  # 6400
-	var img = Image.create(int(img_w), int(img_h), false, Image.FORMAT_RGBA8)
+	var img_w: float = (MAP_WIDTH + MAP_HEIGHT) * HALF_W
+	var img_h: float = (MAP_WIDTH + MAP_HEIGHT) * HALF_H
+	var img := Image.create(int(img_w), int(img_h), false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
 	
-	# 精灵定位：等距地图的几何中心（grid_to_world(120,80)）
-	var sprite_pos = Vector2((MAP_WIDTH - MAP_HEIGHT) * HALF_W / 2.0, (MAP_WIDTH + MAP_HEIGHT) * HALF_H / 2.0)
+	var sprite_pos := Vector2((MAP_WIDTH - MAP_HEIGHT) * HALF_W / 2.0, (MAP_WIDTH + MAP_HEIGHT) * HALF_H / 2.0)
 	
-	var terrain_map = {0:["water_0","water_1","water_2"], 1:["sand"],
-		2:["grass_0","grass_1","grass_2"], 3:["forest"], 4:["mountain"], 5:["mountain"]}
+	var terrain_map := {
+		0: ["water_0", "water_1", "water_2"],
+		1: ["sand"],
+		2: ["grass_0", "grass_1", "grass_2"],
+		3: ["forest_0", "forest_1"],
+		4: ["mountain_0", "mountain_1"],
+		5: ["mountain_0", "mountain_1"]
+	}
 	
 	var drawn := 0
 	for gy in range(MAP_HEIGHT):
 		for gx in range(MAP_WIDTH):
-			# 等距格子 → 纹理像素坐标（确保与 grid_to_world 映射一致）
-			# tx = (gx - gy) * HALF_W - sprite_pos.x + img_w/2 = 32*(gx - gy + MAP_HEIGHT)
-			# ty = (gx + gy) * HALF_H - sprite_pos.y + img_h/2 = 16*(gx + gy)
-			var tx = HALF_W * (gx - gy + MAP_HEIGHT)
-			var ty = HALF_H * (gx + gy)
+			var tx: float = HALF_W * (gx - gy + MAP_HEIGHT)
+			var ty: float = HALF_H * (gx + gy)
 			
 			var nt = _grid_map.get_natural_terrain(gx, gy)
 			var names = terrain_map.get(nt, ["grass_0"])
-			var chosen = names[hash(str(gx)+","+str(gy)) % names.size()]
+			var chosen = names[hash(str(gx) + "," + str(gy)) % names.size()]
 			var simg = tile_images.get(chosen)
 			if simg == null:
 				continue
-			img.blit_rect(simg, Rect2i(0, 0, TILE_W, TILE_H), Vector2i(tx, ty))
+			
+			# 山脉、森林等特殊高度tile需要偏移以对齐地面
+			var offset_y: int = 0
+			if nt >= 4:
+				# 山脉：底部对齐地面
+				offset_y = TILE_H - simg.get_height()
+			elif nt == 3:
+				# 森林：树冠向上突起，菱形中心对齐
+				offset_y = - (simg.get_height() - TILE_H) / 2
+			
+			img.blit_rect(simg, Rect2i(0, 0, TILE_W, simg.get_height()), Vector2i(tx, ty + offset_y))
 			drawn += 1
 	
-	print("[TERRAIN] 地形图渲染: ", drawn, " tiles → ", img_w, "x", img_h)
+	print("[TERRAIN] 地形渲染完成: ", drawn, " tiles → ", img_w, "x", img_h)
 	
 	_terrain_sprite = Sprite2D.new()
 	_terrain_sprite.name = "IsoTerrain"
-	var tex = ImageTexture.create_from_image(img)
+	var tex := ImageTexture.create_from_image(img)
 	_terrain_sprite.texture = tex
 	_terrain_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_terrain_sprite.centered = true
