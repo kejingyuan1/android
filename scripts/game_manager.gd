@@ -1549,10 +1549,10 @@ func upgrade_town_hall():
 	if new_texture and is_instance_valid(cell.building_ref):
 		cell.building_ref.texture = new_texture
 		cell.building_level = new_level
-			# 逐级增大比例
-			cell.building_ref.scale = Vector2(0.45 + (new_level - 1) * 0.035, 0.45 + (new_level - 1) * 0.035)
-			_show_toast("⬆️ 大本营升级到 Lv." + str(new_level))
-			print("[TOWN_HALL] 升级到 L", new_level)
+		# 逐级增大比例
+		cell.building_ref.scale = Vector2(0.45 + (new_level - 1) * 0.035, 0.45 + (new_level - 1) * 0.035)
+		_show_toast("⬆️ 大本营升级到 Lv." + str(new_level))
+		print("[TOWN_HALL] 升级到 L", new_level)
 	else:
 		_show_toast("⚠️ 大本营升级纹理缺失: " + new_tex_path)
 		print("[TOWN_HALL] WARN: ", new_tex_path, " 不存在")
