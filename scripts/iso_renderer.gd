@@ -1,4 +1,5 @@
 # IsoRenderer.gd — 等距地形和道路渲染
+# 地形使用 Sprite2D 大纹理方案（替代 TileMap，规避 Godot 4.6 等距 TileMap 渲染兼容问题）
 extends Node2D
 
 const MAP_WIDTH := 240
@@ -9,13 +10,12 @@ const HALF_W := 32.0
 const HALF_H := 16.0
 
 var _grid_map = null
-var _terrain = null
+var _terrain_sprite = null
 var _road_container = null
 var _road_sprites = {}
 var _road_sheets = {}
 
 func _ready():
-	# 预加载道路纹理，确保随时可用
 	_preload_road_textures()
 
 func _preload_road_textures():
@@ -25,38 +25,90 @@ func _preload_road_textures():
 			var tex = load(path)
 			if tex:
 				_road_sheets[rname] = tex
-				print("[ISO_ROAD] Preloaded: ", path)
-			else:
-				print("[ISO_ROAD] WARN: load() returned null for: ", path)
-		else:
-			print("[ISO_ROAD] WARN: File not found: ", path)
 
 func setup(grid_map_node, _seed_val = 0):
 	_grid_map = grid_map_node
-	# 再次确保纹理已加载（_ready 可能比 setup 晚执行）
-	_preload_road_textures()
 
 func generate():
 	if _grid_map == null:
-		print("[TERRAIN] generate() aborted: _grid_map is null")
 		return
-	print("[TERRAIN] generate() started")
 	_clear_children()
-	# 重置道路相关变量（_clear_children 删除了 _road_container）
 	_road_container = null
 	_road_sprites.clear()
-	_create_terrain_tileset()
-	_fill_terrain()
+	_render_terrain_texture()
 	_create_road_container()
 	init_overlays()
-	print("[TERRAIN] generate() completed")
 
+func _clear_children():
+	for c in get_children():
+		c.queue_free()
+
+# ===== 地形渲染：烘焙到 Sprite2D 大纹理 =====
+func _render_terrain_texture():
+	# 加载地形贴图
+	var tile_texes := {}
+	var names_arr = ["grass_0","grass_1","grass_2","water_0","water_1","water_2",
+		"sand","forest","mountain","dirt"]
+	for n in names_arr:
+		var p = "res://assets/textures/isometric/%s.png" % n
+		if ResourceLoader.exists(p):
+			tile_texes[n] = load(p)
+	if tile_texes.size() == 0:
+		return
+	
+	# 计算纹理尺寸：等距地图的完整矩形区域
+	# grid_to_world(0,0) = (0,0); grid_to_world(MAP_W,MAP_H) = ((W-H)*32, (W+H)*16)
+	# 计算纹理尺寸
+	var img_w = (MAP_WIDTH + MAP_HEIGHT) * HALF_W  # 12800
+	var img_h = (MAP_WIDTH + MAP_HEIGHT) * HALF_H  # 6400
+	var img = Image.create(int(img_w), int(img_h), false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	
+	# 精灵定位：等距地图的几何中心（grid_to_world(120,80)）
+	var sprite_pos = Vector2((MAP_WIDTH - MAP_HEIGHT) * HALF_W / 2.0, (MAP_WIDTH + MAP_HEIGHT) * HALF_H / 2.0)
+	
+	var terrain_map = {0:["water_0","water_1","water_2"], 1:["sand"],
+		2:["grass_0","grass_1","grass_2"], 3:["forest"], 4:["mountain"], 5:["mountain"]}
+	
+	var drawn := 0
+	for gy in range(MAP_HEIGHT):
+		for gx in range(MAP_WIDTH):
+			# 等距格子 → 纹理像素坐标（确保与 grid_to_world 映射一致）
+			# tx = (gx - gy) * HALF_W - sprite_pos.x + img_w/2 = 32*(gx - gy + MAP_HEIGHT)
+			# ty = (gx + gy) * HALF_H - sprite_pos.y + img_h/2 = 16*(gx + gy)
+			var tx = HALF_W * (gx - gy + MAP_HEIGHT)
+			var ty = HALF_H * (gx + gy)
+			
+			var nt = _grid_map.get_natural_terrain(gx, gy)
+			var names = terrain_map.get(nt, ["grass_0"])
+			var chosen = names[hash(str(gx)+","+str(gy)) % names.size()]
+			var src = tile_texes.get(chosen)
+			if src == null:
+				continue
+			var simg = src.get_image()
+			if simg:
+				img.blit_rect(simg, Rect2i(0, 0, TILE_W, TILE_H), Vector2i(tx, ty))
+				drawn += 1
+	
+	print("[TERRAIN] 地形图渲染: ", drawn, " tiles → ", img_w, "x", img_h)
+	
+	_terrain_sprite = Sprite2D.new()
+	_terrain_sprite.name = "IsoTerrain"
+	var tex = ImageTexture.create_from_image(img)
+	_terrain_sprite.texture = tex
+	_terrain_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_terrain_sprite.centered = true
+	_terrain_sprite.position = sprite_pos
+	_terrain_sprite.z_index = 0
+	add_child(_terrain_sprite)
+	print("[TERRAIN] 地形精灵已创建: pos=", sprite_pos, " tex=", img_w, "x", img_h)
+
+# ===== 道路系统 =====
 func _create_road_container():
 	_road_container = Node2D.new()
 	_road_container.name = "RoadContainer"
 	_road_container.z_index = 1
 	add_child(_road_container)
-	print("[ISO_ROAD] Road container created")
 
 func _get_road_sheet_key(road_type):
 	match road_type:
@@ -67,22 +119,16 @@ func _get_road_sheet_key(road_type):
 
 func update_road(gx, gy, road_type):
 	if _road_container == null:
-		print("[ISO_ROAD] WARN: _road_container is null, creating...")
 		_create_road_container()
 		if _road_container == null:
 			return
-	
-	# 尝试加载纹理
 	var sheet = _get_or_load_sheet(road_type)
 	if sheet == null:
-		print("[ISO_ROAD] WARN: sheet null for type ", road_type, ", using fallback")
 		_create_fallback_road(gx, gy, road_type)
 		return
-	
 	var coords = _get_road_coords(gx, gy)
 	var atlas_x = coords.x * TILE_W
 	var atlas_y = coords.y * TILE_H
-	
 	var sprite_key = str(gx) + "_" + str(gy)
 	var sprite = _road_sprites.get(sprite_key)
 	if sprite == null:
@@ -92,9 +138,7 @@ func update_road(gx, gy, road_type):
 		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		_road_container.add_child(sprite)
 		_road_sprites[sprite_key] = sprite
-		print("[ISO_ROAD] Created sprite at ", gx, ",", gy)
 	elif not is_instance_valid(sprite) or sprite.get_parent() == null:
-		# 精灵无效或已被移除，重新创建
 		_road_sprites.erase(sprite_key)
 		sprite = Sprite2D.new()
 		sprite.name = "Road_" + sprite_key
@@ -102,9 +146,6 @@ func update_road(gx, gy, road_type):
 		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		_road_container.add_child(sprite)
 		_road_sprites[sprite_key] = sprite
-		print("[ISO_ROAD] Recreated sprite at ", gx, ",", gy)
-	
-	# 使用 Sprite2D region_rect 裁剪子图块
 	sprite.texture = sheet
 	sprite.region_enabled = true
 	sprite.region_rect = Rect2(atlas_x, atlas_y, TILE_W, TILE_H)
@@ -112,28 +153,19 @@ func update_road(gx, gy, road_type):
 
 func _get_or_load_sheet(road_type):
 	var key = _get_road_sheet_key(road_type)
-	# 检查缓存
 	if _road_sheets.has(key):
 		return _road_sheets[key]
-	# 尝试加载
 	var path = "res://assets/textures/roads/iso_%s.png" % key
 	if ResourceLoader.exists(path):
 		var tex = load(path)
 		if tex:
 			_road_sheets[key] = tex
-			print("[ISO_ROAD] Lazy-loaded texture: ", path)
 			return tex
-		else:
-			print("[ISO_ROAD] FAILED: load() returned null for: ", path)
-	else:
-		print("[ISO_ROAD] FAILED: File not found: ", path)
 	return null
 
 func _create_fallback_road(gx, gy, road_type):
-	# 备选方案：程序生成彩色菱形（边缘透明）
 	if _road_container == null:
 		_create_road_container()
-	
 	var sprite_key = str(gx) + "_" + str(gy)
 	var sprite = _road_sprites.get(sprite_key)
 	if sprite == null:
@@ -143,8 +175,6 @@ func _create_fallback_road(gx, gy, road_type):
 		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		_road_container.add_child(sprite)
 		_road_sprites[sprite_key] = sprite
-	
-	# 生成彩色菱形纹理（车道区域实心，边缘透明）
 	var colors = [Color(0.8, 0.6, 0.2, 0.9), Color(0.3, 0.3, 0.3, 0.9), Color(0.15, 0.15, 0.15, 0.9)]
 	var col = colors[road_type % 3]
 	var img = Image.create(TILE_W, TILE_H, false, Image.FORMAT_RGBA8)
@@ -155,7 +185,6 @@ func _create_fallback_road(gx, gy, road_type):
 			var dx = abs(x - cx_f) / cx_f
 			var dy = abs(y - cy_f) / cy_f
 			if dx + dy <= 1.0:
-				# 车道区域（只占 ~65% 宽度）
 				if abs(dy) <= 0.65:
 					img.set_pixel(x, y, col)
 				else:
@@ -177,7 +206,6 @@ func clear_road(gx, gy):
 		_road_sprites.erase(sprite_key)
 
 func clear_all_roads():
-	# 使用 remove_child + queue_free 避免延迟删除导致的问题
 	for key in _road_sprites.keys():
 		var sp = _road_sprites[key]
 		if sp != null and is_instance_valid(sp):
@@ -200,79 +228,7 @@ func _get_road_coords(cx, cy):
 	elif u or d: return Vector2i(1, 0)
 	else: return Vector2i(1, 1)
 
-func _clear_children():
-	for c in get_children():
-		c.queue_free()
-
-func _create_terrain_tileset():
-	var tileset = TileSet.new()
-	tileset.tile_shape = TileSet.TILE_SHAPE_ISOMETRIC
-	tileset.tile_size = Vector2i(TILE_W, TILE_H)
-	tileset.tile_layout = TileSet.TILE_LAYOUT_STACKED
-	tileset.tile_offset_axis = TileSet.TILE_OFFSET_AXIS_HORIZONTAL
-
-	var tile_names = [
-		"grass_0", "grass_1", "grass_2",
-		"water_0", "water_1", "water_2",
-		"sand", "forest", "mountain", "dirt"
-	]
-	var loaded_count := 0
-	for name in tile_names:
-		var path = "res://assets/textures/isometric/%s.png" % name
-		if not ResourceLoader.exists(path):
-			print("[TERRAIN] WARN: missing texture: ", path)
-			continue
-		var tex = load(path)
-		if tex == null:
-			print("[TERRAIN] WARN: load failed: ", path)
-			continue
-		var src = TileSetAtlasSource.new()
-		src.texture = tex
-		src.texture_region_size = Vector2i(TILE_W, TILE_H)
-		src.create_tile(Vector2i(0, 0))
-		tileset.add_source(src)
-		loaded_count += 1
-	print("[TERRAIN] Loaded ", loaded_count, "/", tile_names.size(), " textures")
-
-	_terrain = TileMap.new()
-	_terrain.tile_set = tileset
-	_terrain.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	add_child(_terrain)
-	print("[TERRAIN] TileMap added, sources=", tileset.get_source_count())
-
-func _fill_terrain():
-	if _terrain == null:
-		print("[TERRAIN] WARN: _terrain is null, skipping fill")
-		return
-	var map = {0:["water_0","water_1","water_2"], 1:["sand"], 2:["grass_0","grass_1","grass_2"],
-		3:["forest"], 4:["mountain"], 5:["mountain"]}
-	var ts = _terrain.tile_set
-	var cells_set := 0
-	for gy in range(MAP_HEIGHT):
-		for gx in range(MAP_WIDTH):
-			var nt = _grid_map.get_natural_terrain(gx, gy)
-			var names = map.get(nt, ["grass_0"])
-			var chosen = names[hash(str(gx)+","+str(gy)) % names.size()]
-			var sid = _find_source(chosen)
-			if sid >= 0:
-				_terrain.set_cell(0, Vector2i(gx, gy), sid, Vector2i(0,0))
-				cells_set += 1
-			else:
-				if ts and ts.get_source_count() > 0:
-					_terrain.set_cell(0, Vector2i(gx, gy), 0, Vector2i(0,0))
-					cells_set += 1
-	print("[TERRAIN] Filled ", cells_set, "/", MAP_WIDTH * MAP_HEIGHT, " cells")
-
-func _find_source(name):
-	if _terrain == null: return -1
-	var ts = _terrain.tile_set
-	for i in range(ts.get_source_count()):
-		var src = ts.get_source(i)
-		if src and src.texture and src.texture.resource_path.find(name) >= 0:
-			return i
-	return -1
-
-# 高亮 & 虚影
+# ===== 高亮 & 虚影 =====
 var _highlight = null
 var _ghost = null
 
