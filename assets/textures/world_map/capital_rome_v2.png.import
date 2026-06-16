@@ -1,0 +1,21 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://4d1dnsonaewy9j0b0s66"
+path="res://.godot/imported/capital_rome_v2.png-0f78f3e03a55c44dc4ce33b1b48c6479.ctex"
+metadata={
+"vram_texture": false
+}
+
+[deps]
+
+source_file="res://assets/textures/world_map/capital_rome_v2.png"
+dest_files=["res://.godot/imported/capital_rome_v2.png-0f78f3e03a55c44dc4ce33b1b48c6479.ctex"]
+
+[params]
+
+compress/mode=0
+process/fix_alpha_border=false
+process/premult_alpha=false
+mipmaps/generate=false

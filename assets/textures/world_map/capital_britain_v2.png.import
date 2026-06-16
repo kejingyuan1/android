@@ -1,0 +1,21 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://8w2vvq5jp4f8ynpvkqqp"
+path="res://.godot/imported/capital_britain_v2.png-33d3267866bc48ce572550bac1627735.ctex"
+metadata={
+"vram_texture": false
+}
+
+[deps]
+
+source_file="res://assets/textures/world_map/capital_britain_v2.png"
+dest_files=["res://.godot/imported/capital_britain_v2.png-33d3267866bc48ce572550bac1627735.ctex"]
+
+[params]
+
+compress/mode=0
+process/fix_alpha_border=false
+process/premult_alpha=false
+mipmaps/generate=false

@@ -1,0 +1,21 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://k45erz9atrgrwgg2zl10"
+path="res://.godot/imported/capital_viking_v2.png-3a88216f15a6449deb8324ce21bedd7f.ctex"
+metadata={
+"vram_texture": false
+}
+
+[deps]
+
+source_file="res://assets/textures/world_map/capital_viking_v2.png"
+dest_files=["res://.godot/imported/capital_viking_v2.png-3a88216f15a6449deb8324ce21bedd7f.ctex"]
+
+[params]
+
+compress/mode=0
+process/fix_alpha_border=false
+process/premult_alpha=false
+mipmaps/generate=false

@@ -1,0 +1,21 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://rfjbr0na5nkgin88p3at"
+path="res://.godot/imported/town_hall_british_l9_v2.png-a6c3646e29d1564fa595f904d01d226d.ctex"
+metadata={
+"vram_texture": false
+}
+
+[deps]
+
+source_file="res://assets/textures/buildings/town_hall_british_l9_v2.png"
+dest_files=["res://.godot/imported/town_hall_british_l9_v2.png-a6c3646e29d1564fa595f904d01d226d.ctex"]
+
+[params]
+
+compress/mode=0
+process/fix_alpha_border=false
+process/premult_alpha=false
+mipmaps/generate=false

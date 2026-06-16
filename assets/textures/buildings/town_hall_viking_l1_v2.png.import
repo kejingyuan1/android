@@ -1,0 +1,21 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://akn3zn76j46vij3gpzg1"
+path="res://.godot/imported/town_hall_viking_l1_v2.png-ca37c1ef75f6b77e175459227ccfe23d.ctex"
+metadata={
+"vram_texture": false
+}
+
+[deps]
+
+source_file="res://assets/textures/buildings/town_hall_viking_l1_v2.png"
+dest_files=["res://.godot/imported/town_hall_viking_l1_v2.png-ca37c1ef75f6b77e175459227ccfe23d.ctex"]
+
+[params]
+
+compress/mode=0
+process/fix_alpha_border=false
+process/premult_alpha=false
+mipmaps/generate=false

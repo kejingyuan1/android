@@ -1457,7 +1457,7 @@ func _place_town_hall():
 					iso_renderer.clear_road(nx, ny)
 	
 	# 加载大本营纹理（使用原始 PNG 加载绕过 Godot 导入系统）
-	var tex_path = "res://assets/textures/buildings/town_hall_%s_l1.png" % civ_name
+	var tex_path = "res://assets/textures/buildings/town_hall_%s_l1_v2.png" % civ_name
 	var texture = null
 	var png_path = ProjectSettings.globalize_path(tex_path)
 	var file = FileAccess.open(png_path, FileAccess.READ)
@@ -1533,7 +1533,7 @@ func upgrade_town_hall():
 	var civ_name = civ_names[civ_id]
 	
 	var new_level = current_level + 1
-	var new_tex_path = "res://assets/textures/buildings/town_hall_%s_l%d.png" % [civ_name, new_level]
+	var new_tex_path = "res://assets/textures/buildings/town_hall_%s_l%d_v2.png" % [civ_name, new_level]
 	
 	# 使用原始 PNG 加载绕过导入缓存
 	var new_texture = null

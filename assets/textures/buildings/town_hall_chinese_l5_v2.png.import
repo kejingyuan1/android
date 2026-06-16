@@ -1,0 +1,21 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://jx5y6xpnt6g2io5ynrzh"
+path="res://.godot/imported/town_hall_chinese_l5_v2.png-f43d75b6db7190e5782e2b198c8dd1ad.ctex"
+metadata={
+"vram_texture": false
+}
+
+[deps]
+
+source_file="res://assets/textures/buildings/town_hall_chinese_l5_v2.png"
+dest_files=["res://.godot/imported/town_hall_chinese_l5_v2.png-f43d75b6db7190e5782e2b198c8dd1ad.ctex"]
+
+[params]
+
+compress/mode=0
+process/fix_alpha_border=false
+process/premult_alpha=false
+mipmaps/generate=false

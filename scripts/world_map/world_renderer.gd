@@ -106,7 +106,7 @@ func _get_capital_texture_path(civ_id: int) -> String:
 	var civ_names = ["china", "rome", "britain", "egypt", "japan", "viking"]
 	if civ_id < 0 or civ_id >= civ_names.size():
 		civ_id = 0
-	return "res://assets/textures/world_map/capital_" + civ_names[civ_id] + ".png"
+	return "res://assets/textures/world_map/capital_" + civ_names[civ_id] + "_v2.png"
 
 ## 在城市位置放置主城建筑贴图
 func place_city_marker(wx: int, wy: int, civ_id: int, city_name: String):

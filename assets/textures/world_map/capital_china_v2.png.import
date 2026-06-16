@@ -1,0 +1,21 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://ldcak2stugbukcv9my2l"
+path="res://.godot/imported/capital_china_v2.png-6fcba7b76113ca048b6ca9c1143e6404.ctex"
+metadata={
+"vram_texture": false
+}
+
+[deps]
+
+source_file="res://assets/textures/world_map/capital_china_v2.png"
+dest_files=["res://.godot/imported/capital_china_v2.png-6fcba7b76113ca048b6ca9c1143e6404.ctex"]
+
+[params]
+
+compress/mode=0
+process/fix_alpha_border=false
+process/premult_alpha=false
+mipmaps/generate=false

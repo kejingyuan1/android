@@ -1,0 +1,21 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://l5yet0na18sn4ag5ai4m"
+path="res://.godot/imported/town_hall_egyptian_l3_v2.png-624d9b77c0374df3a8e4895362cb95be.ctex"
+metadata={
+"vram_texture": false
+}
+
+[deps]
+
+source_file="res://assets/textures/buildings/town_hall_egyptian_l3_v2.png"
+dest_files=["res://.godot/imported/town_hall_egyptian_l3_v2.png-624d9b77c0374df3a8e4895362cb95be.ctex"]
+
+[params]
+
+compress/mode=0
+process/fix_alpha_border=false
+process/premult_alpha=false
+mipmaps/generate=false

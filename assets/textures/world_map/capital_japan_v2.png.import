@@ -1,0 +1,21 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://vdkbn0ccr6g8qw4c8b97"
+path="res://.godot/imported/capital_japan_v2.png-97e846a447ab696c596557781d36b25e.ctex"
+metadata={
+"vram_texture": false
+}
+
+[deps]
+
+source_file="res://assets/textures/world_map/capital_japan_v2.png"
+dest_files=["res://.godot/imported/capital_japan_v2.png-97e846a447ab696c596557781d36b25e.ctex"]
+
+[params]
+
+compress/mode=0
+process/fix_alpha_border=false
+process/premult_alpha=false
+mipmaps/generate=false
