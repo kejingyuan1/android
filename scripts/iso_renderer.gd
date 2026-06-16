@@ -45,38 +45,55 @@ func _clear_children():
 
 # ===== 地形渲染：烘焙到 Sprite2D 大纹理 =====
 func _render_terrain_texture():
-	# 直接从 PNG 文件加载原始图像数据（绕过 Godot 导入系统）
+	# 程序化生成地形贴图（完全不依赖任何外部文件，杜绝导入问题）
 	var tile_images := {}
 	var names_arr = ["grass_0","grass_1","grass_2","water_0","water_1","water_2",
 		"sand","forest","mountain","dirt"]
+	
+	# 程序化生成各地形菱形纹理（64x32）
 	for n in names_arr:
-		var png_path = ProjectSettings.globalize_path("res://assets/textures/isometric/%s.png" % n)
-		print("[TERRAIN] 加载贴图: ", png_path)
-		var file = FileAccess.open(png_path, FileAccess.READ)
-		if file:
-			var buffer = file.get_buffer(file.get_length())
-			file.close()
-			print("[TERRAIN]  文件大小: ", buffer.size(), " bytes")
-			var simg = Image.new()
-			if simg.load_png_from_buffer(buffer) == OK:
-				tile_images[n] = simg
-				# 验证第一个非透明像素的颜色
-				var found = false
-				for sy in range(32):
-					for sx in range(64):
-						if simg.get_pixel(sx, sy).a > 0.5:
-							var c = simg.get_pixel(sx, sy)
-							print("[TERRAIN]  ", n, " 首像素(", sx, ",", sy, "): (", int(c.r*255), ",", int(c.g*255), ",", int(c.b*255), ")")
-							found = true
-							break
-					if found: break
-			else:
-				print("[TERRAIN]  WARN: 无法解码PNG: ", png_path)
-		else:
-			print("[TERRAIN]  WARN: 无法打开文件: ", png_path)
-	if tile_images.size() == 0:
-		print("[TERRAIN]  ERROR: 没有可用贴图!")
-		return
+		var simg = Image.create(TILE_W, TILE_H, false, Image.FORMAT_RGBA8)
+		simg.fill(Color(0, 0, 0, 0))
+		
+		# 根据纹理类型选择颜色
+		var base_color := Color(0.27, 0.63, 0.20)  # 默认绿色（草地）
+		if n.begins_with("grass"): base_color = Color(0.27, 0.63, 0.20)
+		elif n.begins_with("water"): base_color = Color(0.18, 0.41, 0.75)
+		elif n == "sand": base_color = Color(0.76, 0.71, 0.55)
+		elif n == "forest": base_color = Color(0.16, 0.39, 0.14)
+		elif n == "mountain": base_color = Color(0.47, 0.45, 0.43)
+		elif n == "dirt": base_color = Color(0.55, 0.45, 0.29)
+		
+		# 轻微随机化（草地变体）
+		var variant_offset := 0.0
+		if n.ends_with("_1"): variant_offset = 0.03
+		elif n.ends_with("_2"): variant_offset = -0.03
+		
+		# 绘制菱形
+		var cx := TILE_W / 2.0
+		var cy := TILE_H / 2.0
+		for y in range(TILE_H):
+			for x in range(TILE_W):
+				var dx := abs(x - cx) / cx
+				var dy := abs(y - cy) / cy
+				if dx + dy <= 1.0:
+					var r := base_color.r + variant_offset + randf_range(-0.02, 0.02)
+					var g := base_color.g + variant_offset + randf_range(-0.02, 0.02)
+					var b := base_color.b + variant_offset + randf_range(-0.02, 0.02)
+					simg.set_pixel(x, y, Color(clampf(r, 0, 1), clampf(g, 0, 1), clampf(b, 0, 1), 1.0))
+		
+		tile_images[n] = simg
+		# 打印第一个像素供调试
+		var first_color = Color()
+		var found := false
+		for sy in range(TILE_H):
+			for sx in range(TILE_W):
+				if simg.get_pixel(sx, sy).a > 0.5:
+					first_color = simg.get_pixel(sx, sy)
+					found = true
+					break
+			if found: break
+		print("[TERRAIN] 程序生成: ", n, " 首像素=(", int(first_color.r*255), ",", int(first_color.g*255), ",", int(first_color.b*255), ")")
 	
 	# 计算纹理尺寸：等距地图的完整矩形区域
 	# grid_to_world(0,0) = (0,0); grid_to_world(MAP_W,MAP_H) = ((W-H)*32, (W+H)*16)
