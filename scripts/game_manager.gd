@@ -1501,8 +1501,25 @@ func _place_town_hall():
 			var door_y: int = int(img.get_height() * 0.66)
 			var test_px := img.get_pixel(door_x, door_y)
 			print("[TEX_LOAD]   门洞(", door_x, ",", door_y, "): RGBA=(", test_px.r, ",", test_px.g, ",", test_px.b, ",", test_px.a, ")")
+			
+			# 【诊断】在门洞透明区域画红色标记验证alpha是否在渲染中生效
+			var marked := 0
+			for dy in range(-12, 13):
+				for dx in range(-12, 13):
+					var px: int = door_x + dx
+					var py: int = door_y + dy
+					if px >= 0 and px < img.get_width() and py >= 0 and py < img.get_height():
+						if img.get_pixel(px, py).a < 0.1:
+							img.set_pixel(px, py, Color(1, 0, 0, 0.6))
+							marked += 1
+			print("[TEX_LOAD]   门洞透明区红色诊断标记: ", marked, " 像素")
+			
 			texture = ImageTexture.create_from_image(img)
 			print("[TEX_LOAD]   ImageTexture创建: ", texture != null)
+			# 验证纹理创建后alpha是否保留
+			var tex_img := texture.get_image()
+			var after_px := tex_img.get_pixel(door_x, door_y)
+			print("[TEX_LOAD]   纹理创建后门洞(", door_x, ",", door_y, "): RGBA=(", after_px.r, ",", after_px.g, ",", after_px.b, ",", after_px.a, ")")
 	
 	if not texture:
 		print("[WARN] 大本营纹理不存在: ", tex_path, "，使用默认建筑纹理")
@@ -1529,15 +1546,11 @@ func _place_town_hall():
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	print("[TEX_LOAD] 大本营精灵纹理已赋值: tex=", texture != null, " 纹理尺寸=", texture.get_width() if texture else -1, "x", texture.get_height() if texture else -1)
 	
-	# 等距坐标定位
+	# 等距坐标定位（阴影暂时禁用，确认门洞透明度是否被阴影遮挡）
 	if iso_renderer and iso_renderer.has_method("grid_to_world"):
 		var iso_pos = iso_renderer.grid_to_world(th_gx, th_gy)
 		sprite.position = iso_pos
-		# 添加阴影
-		if iso_renderer.has_method("create_shadow_sprite"):
-			var shadow = iso_renderer.create_shadow_sprite()
-			shadow.position = iso_pos
-			building_container.add_child(shadow)
+		print("[TOWN_HALL] 阴影已禁用(调试中)")
 	
 	sprite.z_index = 10 + th_gy * 0.01
 	sprite.scale = Vector2(0.45, 0.45)  # 大本营比普通建筑更大更醒目
