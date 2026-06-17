@@ -1566,7 +1566,7 @@ func upgrade_town_hall():
 	var civ_name = civ_names[civ_id]
 	
 	var new_level = current_level + 1
-	var new_tex_path = "res://assets/textures/buildings/%s/l%d_v2.png" % [civ_name, new_level]
+	var new_tex_path = "res://assets/textures/buildings/%s/l%d_v3.png" % [civ_name, new_level]
 	
 	# 使用原始 PNG 加载绕过导入缓存
 	var new_texture = null

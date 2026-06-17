@@ -124,7 +124,7 @@ func _get_base_color(nt: int) -> Color:
 		0:  return Color(0.18, 0.38, 0.65)  # WATER - deep blue
 		1:  return Color(0.82, 0.74, 0.48)  # SAND - warm beige
 		2:  return Color(0.42, 0.68, 0.25)  # GRASS - lush green
-		3:  return Color(0.20, 0.50, 0.15)  # FOREST - dark green
-		4:  return Color(0.55, 0.40, 0.25)  # HILL - earthy brown
-		5:  return Color(0.45, 0.40, 0.35)  # MOUNTAIN - gray brown
+		3:  return Color(0.42, 0.68, 0.25)  # FOREST → 统一草地色
+		4:  return Color(0.42, 0.68, 0.25)  # HILL → 统一草地色
+		5:  return Color(0.42, 0.68, 0.25)  # MOUNTAIN → 统一草地色
 		_:  return Color(0.42, 0.68, 0.25)
