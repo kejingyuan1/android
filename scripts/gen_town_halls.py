@@ -62,65 +62,42 @@ def flood_fill_remove_bg(img):
 
 
 def detect_door_gap(img):
-    """动态检测柱子间门洞区域，返回 (left, right, top, bottom)"""
+    """检测柱子间门洞区域"""
     pixels = img.load()
     w, h = img.size
 
-    # 在60%-73%高度扫描
-    best_y = 0
-    best_gap = (0, 0, 0)
-    for y_frac in [0.62, 0.64, 0.66, 0.68, 0.70, 0.72]:
-        y = int(h * y_frac)
+    # 基于模板结构的硬编码坐标
+    # 门洞范围：x=364-436(72px), y=527-640 在原616x851模板中
+    left = int(w * 0.59)  # ~364
+    right = int(w * 0.71)  # ~436
+    top = int(h * 0.62)   # ~527
+    bottom = int(h * 0.75)  # ~638
+
+    # 在目标区域内确认实际间隙边界
+    actual_left = right
+    actual_right = left
+    has_gap = False
+    for y in range(top, bottom):
         cols = [x for x in range(w) if pixels[x, y][3] > 10]
-        if len(cols) < 10:
+        if len(cols) < 5:
             continue
         gaps = []
         prev = cols[0]
         for c in cols[1:]:
-            if c - prev > 10:
-                gaps.append((prev, c))
+            if c - prev > 15:
+                gaps.append((prev+1, c-1, c-prev))
             prev = c
-        for gs, ge in gaps:
-            gw = ge - gs
-            if gw > 50 and 0.40 < gs / w < 0.75:
-                if gw > best_gap[2]:
-                    best_gap = (gs, ge, gw)
-                    best_y = y
-
-    if best_gap[2] < 30:
-        return None
-
-    gs, ge, gw = best_gap
-    door_center = (gs + ge) // 2
-
-    # 找门洞垂直范围
-    top_y = best_y
-    bottom_y = best_y
-    # 向上扫描
-    for y in range(best_y, 0, -2):
-        cols = [x for x in range(w) if pixels[x, y][3] > 10]
-        gaps_found = False
-        for gs2, ge2, _gw2 in _find_gaps(cols, w, 30):
-            if abs(gw-gs2) < 5:
-                gaps_found = True; break
-        if not gaps_found:
-            top_y = y; break
-        top_y = y
-    # 向下扫描（限制最大75%高度，门洞下方是建筑基座）
-    max_bottom = int(h * 0.76)
-    for y in range(best_y, max_bottom, 2):
-        cols = [x for x in range(w) if pixels[x, y][3] > 10]
-        has_gap = False
-        for gs2, ge2, _gw2 in _find_gaps(cols, w, 10):
-            if gs2 < door_center < ge2 and (ge2 - gs2) > 30:
+        for gs, ge, gw in gaps:
+            if gw > 40 and left < gs and ge < right:
+                actual_left = min(actual_left, gs)
+                actual_right = max(actual_right, ge)
                 has_gap = True
-                bottom_y = y
-                break
-        if not has_gap:
-            break
-        bottom_y = y
 
-    return (max(door_center-20, gs+2), min(door_center+20, ge-2), top_y, bottom_y)
+    if has_gap and actual_left < actual_right:
+        return (actual_left + 2, actual_right - 2, top, bottom)
+
+    # 回退硬编码
+    return (left + 5, right - 5, top, bottom)
 
 
 def _find_gaps(cols, w, gap_min):

@@ -327,12 +327,12 @@ func _render_terrain_texture():
 	var sprite_pos := Vector2((MAP_WIDTH - MAP_HEIGHT) * HALF_W / 2.0, (MAP_WIDTH + MAP_HEIGHT) * HALF_H / 2.0)
 	
 	var terrain_map := {
-		0: ["water_0", "water_1", "water_2"],
+		0: ["water_0"],
 		1: ["sand"],
-		2: ["grass_0", "grass_1", "grass_2"],
-		3: ["forest_0", "forest_1"],
-		4: ["mountain_0", "mountain_1"],
-		5: ["mountain_0", "mountain_1"]
+		2: ["grass_2"],
+		3: ["forest_0"],
+		4: ["mountain_0"],
+		5: ["mountain_1"]
 	}
 	
 	var drawn := 0
