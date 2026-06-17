@@ -337,6 +337,13 @@ func _render_terrain_texture():
 	
 	print("[TERRAIN] 地形渲染完成: ", drawn, " tiles → ", img_w, "x", img_h)
 	
+	# 调试：导出地形图到文件
+	var debug_path = "user://debug_iso_terrain_%d.png" % _seed_val
+	var save_result = img.save_png(debug_path)
+	print("[TERRAIN_DEBUG] 地形图已导出到: ", debug_path, " 结果=", save_result)
+	print("[TERRAIN_DEBUG] 采样(100,100)颜色: ", img.get_pixel(100,100))
+	print("[TERRAIN_DEBUG] 采样(200,200)颜色: ", img.get_pixel(200,200))
+	
 	_terrain_sprite = Sprite2D.new()
 	_terrain_sprite.name = "IsoTerrain"
 	var tex := ImageTexture.create_from_image(img)
