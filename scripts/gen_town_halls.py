@@ -243,82 +243,43 @@ def draw_windows(img):
     return img
 
 
-def fill_all_gaps(img):
+def fill_eave_shadows(img):
     """
-    填充建筑体内所有透明空隙：
-    先找到建筑最宽处的左右边界（飞檐位置），然后在整个建筑高度内
-    填充左右边界之间的所有透明像素。这彻底解决飞檐下所有透空问题。
+    在飞檐下的透空位置填充深色阴影（模拟屋檐背光面），
+    而非用采样颜色填充，避免产生难看色块。
+    保留建筑边缘的自然透明背景。
     """
     pixels = img.load()
     w, h = img.size
+    shadow_color = (45, 30, 20, 255)  # 飞檐下阴影色
     
-    # 阶段1：找到建筑最宽处的左右边界（在飞檐高度 y≈42%=357）
-    # 以及建筑体的整体范围
-    left_boundary = w
-    right_boundary = 0
-    y_top = 0
-    y_bot = 0
-    
-    for y in range(h):
-        opaque_cols = [x for x in range(w) if pixels[x, y][3] > 10]
-        if len(opaque_cols) < 10:
-            continue
-        if y_top == 0:
-            y_top = y
-        y_bot = y
-        
-        # 在飞檐高度区域（建筑最宽处），记录最左和最右
-        if 340 <= y <= 370:
-            left_boundary = min(left_boundary, min(opaque_cols))
-            right_boundary = max(right_boundary, max(opaque_cols))
-        # 在建筑主体区域，也更新边界
-        elif 200 <= y <= 650:
-            left_boundary = min(left_boundary, min(opaque_cols))
-            right_boundary = max(right_boundary, max(opaque_cols))
-    
-    print(f"  填充间隙: y范围 {y_top}-{y_bot}, 左右边界 {left_boundary}-{right_boundary}")
-    
-    # 阶段2：在左右边界之间填充所有透明像素
     filled = 0
-    for y in range(y_top, min(y_bot + 1, h)):
-        # 该行的左右边界使用全局检测的行内边界
-        opaque_cols = [x for x in range(w) if pixels[x, y][3] > 10]
-        if len(opaque_cols) < 3:
-            continue
-        
-        row_left = min(opaque_cols)
-        row_right = max(opaque_cols)
-        
-        # 使用行内边界和全局边界的较大范围
-        fill_left = min(row_left, left_boundary)
-        fill_right = max(row_right, right_boundary)
-        
-        for x in range(fill_left, fill_right + 1):
-            if pixels[x, y][3] < 10:
-                # 采样相邻不透明像素的颜色
-                sample_x = x
-                # 向左找最近的不透明像素
-                for sx in range(x - 1, fill_left - 1, -1):
-                    if pixels[sx, y][3] > 10:
-                        sample_x = sx
-                        break
-                if sample_x == x:
-                    # 向右找
-                    for sx in range(x + 1, fill_right + 1):
-                        if pixels[sx, y][3] > 10:
-                            sample_x = sx
-                            break
-                
-                if sample_x != x:
-                    r, g, b, a = pixels[sample_x, y]
-                    pixels[x, y] = (r, g, b, 255)
-                    filled += 1
-                else:
-                    # 无法采样，用棕色填充
-                    pixels[x, y] = (120, 80, 50, 255)
-                    filled += 1
     
-    print(f"  填充了 {filled} 个透明像素")
+    # 左飞檐下间隙：x=37-84区域，y从357向下延伸到443
+    # 这是一个三角形区域：上宽下窄
+    for y in range(357, 444):
+        # 随y增加，右边缘向左缩进（三角形）
+        x_left = 37
+        ratio = (y - 357) / (443 - 357)  # 0到1
+        x_right = int(84 - ratio * 20)  # 从84缩到64
+        
+        for x in range(x_left, x_right):
+            if pixels[x, y][3] < 10:
+                pixels[x, y] = shadow_color
+                filled += 1
+    
+    # 右飞檐下间隙：x=533-580区域
+    for y in range(357, 444):
+        ratio = (y - 357) / (443 - 357)
+        x_left = int(533 + ratio * 20)  # 从533延伸到553
+        x_right = 580
+        
+        for x in range(x_left, x_right):
+            if pixels[x, y][3] < 10:
+                pixels[x, y] = shadow_color
+                filled += 1
+    
+    print(f"  飞檐阴影填充: {filled}px")
     return img
 
 
@@ -460,8 +421,8 @@ def main():
         # 在两侧绘制窗户，遮挡飞檐透空
         civ_img = draw_windows(civ_img)
         
-        # 填充所有间隙：逐行扫描填补所有透明空隙
-        civ_img = fill_all_gaps(civ_img)
+        # 填充飞檐下阴影（模拟屋檐背光，而非硬填色块）
+        civ_img = fill_eave_shadows(civ_img)
 
         # 去水印
         civ_img, wm2 = remove_watermark(civ_img)

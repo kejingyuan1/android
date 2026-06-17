@@ -311,9 +311,9 @@ func _render_terrain_texture():
 		0: ["water_0"],
 		1: ["sand"],
 		2: ["grass_2"],
-		3: ["forest_0"],
-		4: ["mountain_0"],
-		5: ["mountain_1"]
+		3: ["grass_2"],   # 森林 → 统一用草地（消除色块）
+		4: ["grass_2"],   # 丘陵 → 统一用草地
+		5: ["grass_2"],   # 山脉 → 统一用草地
 	}
 	
 	var drawn := 0
