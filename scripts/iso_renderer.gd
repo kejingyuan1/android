@@ -265,7 +265,8 @@ func _render_terrain_texture():
 	var rng := RandomNumberGenerator.new()
 	rng.seed = _seed_val
 	
-	print("[TERRAIN] 生成精致3D等距地形纹理...")
+	print("[TERRAIN] 生成精致等距地形纹理...")
+	print("[TERRAIN] 光照模式: 平坦（无3D光照差异）")
 	
 	var tile_images := {}
 	# 草坪（3变体）
@@ -315,6 +316,7 @@ func _render_terrain_texture():
 		4: ["grass_2"],   # 丘陵 → 统一用草地
 		5: ["grass_2"],   # 山脉 → 统一用草地
 	}
+	print("[TERRAIN] 地形映射: 0=water 1=sand 2-5=ALL grass_2")
 	
 	var drawn := 0
 	for gy in range(MAP_HEIGHT):

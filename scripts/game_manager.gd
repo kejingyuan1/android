@@ -1484,17 +1484,31 @@ func _place_town_hall():
 	var png_path = ProjectSettings.globalize_path(tex_path)
 	print("[TEX_LOAD] 大本营 FileAccess加载: ", tex_path)
 	print("[TEX_LOAD]   全局路径: ", png_path)
+	
+	# 检查文件是否存在和修改时间
+	var dir_access = DirAccess.open(png_path.get_base_dir())
+	if dir_access:
+		var mod_time = dir_access.get_modified_time(png_path.get_file())
+		print("[TEX_LOAD]   文件修改时间戳: ", mod_time)
+	
 	var file = FileAccess.open(png_path, FileAccess.READ)
 	if file:
 		var file_size = file.get_length()
 		var buffer = file.get_buffer(file_size)
 		file.close()
-		print("[TEX_LOAD]   文件打开成功, 大小: ", file_size, " 字节")
+		print("[TEX_LOAD]   文件打开成功, 大小: ", file_size, " 字节 (V3应~590KB)")
 		var img = Image.new()
 		var load_result = img.load_png_from_buffer(buffer)
 		print("[TEX_LOAD]   PNG解码: ", load_result == OK, " 结果码=", load_result)
 		if load_result == OK:
 			print("[TEX_LOAD]   图片尺寸: ", img.get_width(), "x", img.get_height())
+			# 验证飞檐下方是否实心
+			var eave_sample = img.get_pixel(45, 357)
+			print("[TEX_LOAD]   飞檐采样(45,357): RGBA=", eave_sample.r, ",", eave_sample.g, ",", eave_sample.b, ",", eave_sample.a)
+			if eave_sample.a > 0.9:
+				print("[TEX_LOAD]   ✅ 飞檐区域不透明 - 暖色墙体")
+			else:
+				print("[TEX_LOAD]   ⚠️ 飞檐区域透明!")
 			texture = ImageTexture.create_from_image(img)
 			print("[TEX_LOAD]   ImageTexture创建: ", texture != null)
 	
