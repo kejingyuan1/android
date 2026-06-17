@@ -243,43 +243,34 @@ def draw_windows(img):
     return img
 
 
-def fill_eave_shadows(img):
+def fill_eave_gaps(img):
     """
-    在飞檐下的透空位置填充深色阴影（模拟屋檐背光面），
-    而非用采样颜色填充，避免产生难看色块。
-    保留建筑边缘的自然透明背景。
+    填充飞檐两侧的带状透明区域。
+    左带: x=5-85, y=340-451 用墙体色填满
+    右带: x=531-611, y=340-451 用墙体色填满
+    这覆盖了从飞檐尖端到建筑主体的所有三角形间隙。
     """
     pixels = img.load()
     w, h = img.size
-    shadow_color = (45, 30, 20, 255)  # 飞檐下阴影色
+    wall_color = (160, 120, 80, 255)
     
     filled = 0
     
-    # 左飞檐下间隙：x=37-84区域，y从357向下延伸到443
-    # 这是一个三角形区域：上宽下窄
-    for y in range(357, 444):
-        # 随y增加，右边缘向左缩进（三角形）
-        x_left = 37
-        ratio = (y - 357) / (443 - 357)  # 0到1
-        x_right = int(84 - ratio * 20)  # 从84缩到64
-        
-        for x in range(x_left, x_right):
+    # 左带填充
+    for y in range(340, 451):
+        for x in range(5, 85):
             if pixels[x, y][3] < 10:
-                pixels[x, y] = shadow_color
+                pixels[x, y] = wall_color
                 filled += 1
     
-    # 右飞檐下间隙：x=533-580区域
-    for y in range(357, 444):
-        ratio = (y - 357) / (443 - 357)
-        x_left = int(533 + ratio * 20)  # 从533延伸到553
-        x_right = 580
-        
-        for x in range(x_left, x_right):
+    # 右带填充
+    for y in range(340, 451):
+        for x in range(531, 611):
             if pixels[x, y][3] < 10:
-                pixels[x, y] = shadow_color
+                pixels[x, y] = wall_color
                 filled += 1
     
-    print(f"  飞檐阴影填充: {filled}px")
+    print(f"  飞檐带填缝: {filled}px")
     return img
 
 
@@ -421,8 +412,8 @@ def main():
         # 在两侧绘制窗户，遮挡飞檐透空
         civ_img = draw_windows(civ_img)
         
-        # 填充飞檐下阴影（模拟屋檐背光，而非硬填色块）
-        civ_img = fill_eave_shadows(civ_img)
+        # 填充飞檐下间隙为墙体色（直接用暖色填补透明空隙）
+        civ_img = fill_eave_gaps(civ_img)
 
         # 去水印
         civ_img, wm2 = remove_watermark(civ_img)
