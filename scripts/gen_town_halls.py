@@ -61,58 +61,98 @@ def flood_fill_remove_bg(img):
     return img, removed
 
 
-    return (door_left, door_right, door_top, door_bottom)
+def draw_doors(img):
     """
-    清除三处镂空区域（无颜色过滤，直接硬编码坐标）：
-    ① 中间门洞 → 两柱之间
-    ② 左飞檐下方 → 屋檐与主体间的三角间隙
-    ③ 右飞檐下方 → 屋檐与主体间的三角间隙
+    在建筑底部中间门洞位置绘制两扇木门，遮挡后面的草地。
+    门洞区域: x=366-434, y=527-638 (616x851模板坐标)
+    绘制：两扇对开木门 + 门框 + 门钉装饰
     """
     pixels = img.load()
     w, h = img.size
 
-    # ===== ① 中间门洞 =====
-    # 间隙实际在 x=365-435(70px), y=527-638
-    # 使用动态检测确认精确边界
-    door_left, door_right = 366, 434
-    door_top, door_bottom = 527, 638
-    c1 = 0
-    for y in range(door_top, door_bottom):
-        for x in range(door_left, door_right):
-            if pixels[x, y][3] > 10:
-                pixels[x, y] = (0, 0, 0, 0)
-                c1 += 1
-    print(f"  ①门洞: ({door_left}-{door_right},{door_top}-{door_bottom}) {c1}px")
+    # ===== 门框 (外框) =====
+    frame_l, frame_r = 362, 438
+    frame_top, frame_bot = 525, 640
+    frame_color = (101, 67, 33, 255)  # 深棕色
+    # 上框
+    for x in range(frame_l, frame_r):
+        if pixels[x, frame_top][3] > 10:
+            pixels[x, frame_top] = frame_color
+    # 下框
+    for x in range(frame_l, frame_r):
+        if pixels[x, frame_bot-1][3] > 10:
+            pixels[x, frame_bot-1] = frame_color
+    # 左框
+    for y in range(frame_top, frame_bot):
+        if pixels[frame_l, y][3] > 10:
+            pixels[frame_l, y] = frame_color
+    # 右框
+    for y in range(frame_top, frame_bot):
+        if pixels[frame_r-1, y][3] > 10:
+            pixels[frame_r-1, y] = frame_color
 
-    # ===== ② 左飞檐下方 =====
-    # 飞檐尖端 x=6-36 → 间隙 x=37-84(透明) → 建筑主体 x=85+
-    # 创建可见挑檐效果：从间隙内缘(x=37)切到建筑主体(x=110)
-    lx1, lx2 = 37, 110
-    ly1, ly2 = 357, 443
-    c2 = 0
-    for y in range(ly1, ly2):
-        for x in range(lx1, lx2):
-            if pixels[x, y][3] > 10:
-                pixels[x, y] = (0, 0, 0, 0)
-                c2 += 1
-    print(f"  ②左飞檐: ({lx1}-{lx2},{ly1}-{ly2}) {c2}px")
+    # ===== 左门扇 (x=366-400, y=527-638) =====
+    door_left_x1, door_left_x2 = 366, 400
+    # ===== 右门扇 (x=400-434, y=527-638) =====
+    door_right_x1, door_right_x2 = 400, 434
 
-    # ===== ③ 右飞檐下方 =====
-    # 建筑主体 x=532 → 间隙 x=533-580(透明) → 飞檐尖端 x=581-609
-    rx1, rx2 = 506, 579
-    ry1, ry2 = 357, 443
-    c3 = 0
-    for y in range(ry1, ry2):
-        for x in range(rx1, rx2):
-            if pixels[x, y][3] > 10:
-                pixels[x, y] = (0, 0, 0, 0)
-                c3 += 1
-    print(f"  ③右飞檐: ({rx1}-{rx2},{ry1}-{ry2}) {c3}px")
+    door_color = (139, 90, 43, 255)    # 木门底色
+    plank_line = (101, 67, 33, 255)    # 木板缝
+    stud_color = (184, 134, 11, 255)   # 门钉金色
 
-    total = c1 + c2 + c3
-    print(f"  三处合计: {total}px")
-    return img, total
-    return img, removed
+    def draw_door(x1, x2, y1, y2, is_left):
+        # 填充门板底色（直接绘制，不管原像素透明度）
+        for y in range(y1, y2):
+            for x in range(x1, x2):
+                # 加一点渐变色：上深下浅
+                shade = 0.85 + 0.15 * (y - y1) / (y2 - y1)
+                r = int(door_color[0] * shade)
+                g = int(door_color[1] * shade)
+                b = int(door_color[2] * shade)
+                pixels[x, y] = (r, g, b, 255)
+
+        # 木板竖缝（每6px一条）
+        for x in range(x1 + 3, x2, 6):
+            for y in range(y1, y2):
+                if pixels[x, y][3] > 10:
+                    pixels[x, y] = plank_line
+
+        # 横梁（门的上中下横档）
+        for y_frac in [0.15, 0.50, 0.80]:
+            yy = y1 + int((y2 - y1) * y_frac)
+            for x in range(x1, x2):
+                if pixels[x, yy][3] > 10:
+                    pixels[x, yy] = (80, 52, 24, 255)  # 深色横梁
+
+        # 门钉装饰（金色圆点）
+        for row in [0.25, 0.40, 0.60, 0.75, 0.90]:
+            yy = y1 + int((y2 - y1) * row)
+            for col in [0.20, 0.50, 0.80]:
+                xx = x1 + int((x2 - x1) * col)
+                # 画3x3金色门钉
+                for dy in range(-1, 2):
+                    for dx in range(-1, 2):
+                        px, py = xx + dx, yy + dy
+                        if 0 <= px < w and 0 <= py < h:
+                            if pixels[px, py][3] > 10:
+                                pixels[px, py] = stud_color
+
+        # 门环（靠近中缝的位置）
+        ring_x = x2 - 8 if is_left else x1 + 8
+        ring_y = y1 + int((y2 - y1) * 0.55)
+        for dy in range(-3, 4):
+            for dx in range(-3, 4):
+                dist = dx*dx + dy*dy
+                if 6 <= dist <= 13:
+                    px, py = ring_x + dx, ring_y + dy
+                    if 0 <= px < w and 0 <= py < h:
+                        if pixels[px, py][3] > 10:
+                            pixels[px, py] = (184, 115, 51, 255)  # 铜环
+
+    draw_door(door_left_x1, door_left_x2, 527, 638, True)
+    draw_door(door_right_x1, door_right_x2, 527, 638, False)
+
+    return img
 
 
 def apply_tint(img, roof_hue, wall_hue, base_hue, sat_scale, lum_shift):
@@ -247,8 +287,8 @@ def main():
         civ_img = apply_tint(civ_img, tint["roof_hue"], tint["wall_hue"],
                             tint["base_hue"], tint["sat"], tint["lum"])
 
-        # 动态检测门洞并镂空
-        civ_img, dr = make_door_transparent(civ_img)
+        # 在门洞位置绘制木门（替代镂空）
+        civ_img = draw_doors(civ_img)
 
         # 去水印
         civ_img, wm2 = remove_watermark(civ_img)

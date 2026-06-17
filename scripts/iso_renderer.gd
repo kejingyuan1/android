@@ -53,34 +53,31 @@ func _clear_children():
 # 每个菱形 tile 有 3D 光照：顶部亮（受光面）、左下中灰（侧光面）、右下暗（背光面）
 # 山脉向上突起带雪顶，水域带波纹，森林有树冠纹理
 
-# 在菱形内绘制带3D光照的像素
+# 在菱形内绘制带极淡3D光照的像素（平坦模式，避免棋盘格色块）
 func _iso_set_pixel_3d(img: Image, x: int, y: int, base_col: Color, cx: float, cy: float):
 	# 计算像素在菱形中的归一化位置
 	var dx: float = float(x) / cx - 1.0  # -1..1
 	var dy: float = float(y) / cy - 1.0  # -1..1
 	
-	# 3D 光照：模拟光源从左上方照射
-	# 上方平坦区域 → 亮度最高 (top face)
-	# 左下方 → 中等亮度 (left face)
-	# 右下方 → 较暗 (right face / shadow)
+	# 极淡光照：保留细微立体感但消除强对比色块
+	# 整体亮度范围压缩到 0.92~1.05，相邻色差 < 5%
 	var brightness: float = 1.0
 	
 	if dy > 0:
-		# 下半部分（正面/侧面）按位置分左右
+		# 下半部分：略微变暗
+		var t: float = abs(dx) / (1.0 - abs(dy) + 0.001)
 		if x < cx:
-			# 左半（左下侧光面）: 亮度 0.75~0.9
-			var t: float = abs(dx) / (1.0 - abs(dy) + 0.001)
-			brightness = 0.92 - t * 0.17
+			# 左半边：微暗 0.96~1.0
+			brightness = 1.0 - t * 0.04
 		else:
-			# 右半（右下背光面）: 亮度 0.55~0.7
-			var t: float = dx / (1.0 - abs(dy) + 0.001)
-			brightness = 0.72 - t * 0.17
+			# 右半边：稍暗 0.92~0.97
+			brightness = 0.97 - t * 0.05
 	else:
-		# 上半部分（顶面）: 亮度 0.95~1.05
-		var dist_from_edge: float = abs(dy)  # 0 at center, 1 at top
-		brightness = 1.05 - dist_from_edge * 0.08
+		# 上半部分（顶面）：轻微提亮 1.00~1.05
+		var dist_from_edge: float = abs(dy)
+		brightness = 1.05 - dist_from_edge * 0.05
 	
-	brightness = clampf(brightness, 0.45, 1.15)
+	brightness = clampf(brightness, 0.88, 1.08)
 	
 	img.set_pixel(x, y, Color(
 		clampf(base_col.r * brightness, 0.0, 1.0),
@@ -124,6 +121,12 @@ func _gen_grass_tile(variant: int, rng: RandomNumberGenerator) -> Image:
 					clampf(col.g + 0.06, 0, 1),
 					clampf(col.b + 0.03, 0, 1), 1)
 				img.set_pixel(x, y, light)
+			# 额外细节：小黄花点缀
+			if hash_val % 47 == 0:
+				img.set_pixel(x, y, Color(
+					clampf(0.9, 0, 1),
+					clampf(0.75, 0, 1),
+					clampf(0.2, 0, 1), 1))
 	return img
 
 func _gen_water_tile(variant: int, rng: RandomNumberGenerator) -> Image:
