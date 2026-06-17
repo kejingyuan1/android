@@ -243,6 +243,85 @@ def draw_windows(img):
     return img
 
 
+def fill_all_gaps(img):
+    """
+    填充建筑体内所有透明空隙：
+    先找到建筑最宽处的左右边界（飞檐位置），然后在整个建筑高度内
+    填充左右边界之间的所有透明像素。这彻底解决飞檐下所有透空问题。
+    """
+    pixels = img.load()
+    w, h = img.size
+    
+    # 阶段1：找到建筑最宽处的左右边界（在飞檐高度 y≈42%=357）
+    # 以及建筑体的整体范围
+    left_boundary = w
+    right_boundary = 0
+    y_top = 0
+    y_bot = 0
+    
+    for y in range(h):
+        opaque_cols = [x for x in range(w) if pixels[x, y][3] > 10]
+        if len(opaque_cols) < 10:
+            continue
+        if y_top == 0:
+            y_top = y
+        y_bot = y
+        
+        # 在飞檐高度区域（建筑最宽处），记录最左和最右
+        if 340 <= y <= 370:
+            left_boundary = min(left_boundary, min(opaque_cols))
+            right_boundary = max(right_boundary, max(opaque_cols))
+        # 在建筑主体区域，也更新边界
+        elif 200 <= y <= 650:
+            left_boundary = min(left_boundary, min(opaque_cols))
+            right_boundary = max(right_boundary, max(opaque_cols))
+    
+    print(f"  填充间隙: y范围 {y_top}-{y_bot}, 左右边界 {left_boundary}-{right_boundary}")
+    
+    # 阶段2：在左右边界之间填充所有透明像素
+    filled = 0
+    for y in range(y_top, min(y_bot + 1, h)):
+        # 该行的左右边界使用全局检测的行内边界
+        opaque_cols = [x for x in range(w) if pixels[x, y][3] > 10]
+        if len(opaque_cols) < 3:
+            continue
+        
+        row_left = min(opaque_cols)
+        row_right = max(opaque_cols)
+        
+        # 使用行内边界和全局边界的较大范围
+        fill_left = min(row_left, left_boundary)
+        fill_right = max(row_right, right_boundary)
+        
+        for x in range(fill_left, fill_right + 1):
+            if pixels[x, y][3] < 10:
+                # 采样相邻不透明像素的颜色
+                sample_x = x
+                # 向左找最近的不透明像素
+                for sx in range(x - 1, fill_left - 1, -1):
+                    if pixels[sx, y][3] > 10:
+                        sample_x = sx
+                        break
+                if sample_x == x:
+                    # 向右找
+                    for sx in range(x + 1, fill_right + 1):
+                        if pixels[sx, y][3] > 10:
+                            sample_x = sx
+                            break
+                
+                if sample_x != x:
+                    r, g, b, a = pixels[sample_x, y]
+                    pixels[x, y] = (r, g, b, 255)
+                    filled += 1
+                else:
+                    # 无法采样，用棕色填充
+                    pixels[x, y] = (120, 80, 50, 255)
+                    filled += 1
+    
+    print(f"  填充了 {filled} 个透明像素")
+    return img
+
+
 def apply_tint(img, roof_hue, wall_hue, base_hue, sat_scale, lum_shift):
     pixels = img.load()
     w, h = img.size
@@ -380,6 +459,9 @@ def main():
         
         # 在两侧绘制窗户，遮挡飞檐透空
         civ_img = draw_windows(civ_img)
+        
+        # 填充所有间隙：逐行扫描填补所有透明空隙
+        civ_img = fill_all_gaps(civ_img)
 
         # 去水印
         civ_img, wm2 = remove_watermark(civ_img)
