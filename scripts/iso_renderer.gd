@@ -53,36 +53,14 @@ func _clear_children():
 # 每个菱形 tile 有 3D 光照：顶部亮（受光面）、左下中灰（侧光面）、右下暗（背光面）
 # 山脉向上突起带雪顶，水域带波纹，森林有树冠纹理
 
-# 在菱形内绘制带极淡3D光照的像素（平坦模式，避免棋盘格色块）
+# 平坦填充菱形（消除所有棋盘格色块）
 func _iso_set_pixel_3d(img: Image, x: int, y: int, base_col: Color, cx: float, cy: float):
-	# 计算像素在菱形中的归一化位置
-	var dx: float = float(x) / cx - 1.0  # -1..1
-	var dy: float = float(y) / cy - 1.0  # -1..1
-	
-	# 极淡光照：保留细微立体感但消除强对比色块
-	# 整体亮度范围压缩到 0.92~1.05，相邻色差 < 5%
-	var brightness: float = 1.0
-	
-	if dy > 0:
-		# 下半部分：略微变暗
-		var t: float = abs(dx) / (1.0 - abs(dy) + 0.001)
-		if x < cx:
-			# 左半边：微暗 0.96~1.0
-			brightness = 1.0 - t * 0.04
-		else:
-			# 右半边：稍暗 0.92~0.97
-			brightness = 0.97 - t * 0.05
-	else:
-		# 上半部分（顶面）：轻微提亮 1.00~1.05
-		var dist_from_edge: float = abs(dy)
-		brightness = 1.05 - dist_from_edge * 0.05
-	
-	brightness = clampf(brightness, 0.88, 1.08)
-	
+	# 统一亮度 — 完全平坦，每个菱形块只显示单一颜色
+	# 不再有任何3D光照差异，消除相邻Tile之间的色差
 	img.set_pixel(x, y, Color(
-		clampf(base_col.r * brightness, 0.0, 1.0),
-		clampf(base_col.g * brightness, 0.0, 1.0),
-		clampf(base_col.b * brightness, 0.0, 1.0),
+		clampf(base_col.r, 0.0, 1.0),
+		clampf(base_col.g, 0.0, 1.0),
+		clampf(base_col.b, 0.0, 1.0),
 		1.0
 	))
 
@@ -92,7 +70,7 @@ func _gen_grass_tile(variant: int, rng: RandomNumberGenerator) -> Image:
 	img.fill(Color(0, 0, 0, 0))
 	var cx: float = TILE_W / 2.0
 	var cy: float = TILE_H / 2.0
-	var base := Color(0.28, 0.66, 0.22)
+	var base := Color(0.35, 0.72, 0.25)
 	
 	for y in range(TILE_H):
 		for x in range(TILE_W):
@@ -134,7 +112,7 @@ func _gen_water_tile(variant: int, rng: RandomNumberGenerator) -> Image:
 	img.fill(Color(0, 0, 0, 0))
 	var cx: float = TILE_W / 2.0
 	var cy: float = TILE_H / 2.0
-	var base := Color(0.16, 0.38, 0.72)
+	var base := Color(0.22, 0.48, 0.78)
 	
 	for y in range(TILE_H):
 		for x in range(TILE_W):
@@ -201,12 +179,12 @@ func _gen_forest_tile(variant: int, rng: RandomNumberGenerator) -> Image:
 				continue
 			
 			# 树冠颜色
-			var col := Color(0.10, 0.35, 0.09)
+			var col := Color(0.14, 0.40, 0.12)
 			
 			# 凸起纹理（树冠斑驳）
 			var hv: int = (x * 31627 + y * 64783 + variant * 911) & 0x7FFFFFFF
 			if hv % 7 == 0:
-				col = Color(0.08, 0.28, 0.06)
+				col = Color(0.10, 0.32, 0.08)
 			elif hv % 11 == 0:
 				col = Color(0.13, 0.40, 0.11)
 			elif hv % 17 == 0:
@@ -262,7 +240,7 @@ func _gen_dirt_tile(rng: RandomNumberGenerator) -> Image:
 	img.fill(Color(0, 0, 0, 0))
 	var cx: float = TILE_W / 2.0
 	var cy: float = TILE_H / 2.0
-	var base := Color(0.55, 0.42, 0.25)
+	var base := Color(0.62, 0.48, 0.30)
 	
 	for y in range(TILE_H):
 		for x in range(TILE_W):

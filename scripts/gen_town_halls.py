@@ -1,7 +1,7 @@
 """
 生成大本营纹理：10级 × 6文明
-透明处理：动态检测柱子间隙 → 清除中间门洞区域
-输出: textures/buildings/{civ}/l{level}_v2.png
+   门窗遮挡：在建筑一层绘制木门+窗户，彻底消除透视问题
+   输出: textures/buildings/{civ}/l{level}_v3.png
 """
 from PIL import Image, ImageDraw
 import os, random
@@ -155,6 +155,94 @@ def draw_doors(img):
     return img
 
 
+def draw_windows(img):
+    """
+    在建筑一层两侧绘制格子窗，遮挡飞檐下的透空区域。
+    左窗: x=40-365, y=400-520
+    右窗: x=435-535, y=400-520
+    """
+    pixels = img.load()
+    w, h = img.size
+
+    wall_color = (160, 120, 80, 255)   # 淡棕色墙体
+    frame_color = (101, 67, 33, 255)   # 深棕色窗框
+    glass_color = (180, 200, 220, 255)  # 淡蓝色玻璃
+    glass_light = (200, 220, 240, 255)  # 玻璃高光
+
+    def draw_window_area(x1, x2, y1, y2):
+        # 填充墙体底色为浅色（覆盖可能透明的区域）
+        for y in range(y1, y2):
+            for x in range(x1, x2):
+                if pixels[x, y][3] > 10:
+                    r, g, b, a = pixels[x, y]
+                    brightness = (r + g + b) / (3 * 255)
+                    if brightness < 0.3:
+                        # 太暗的像素（影子/间隙）提亮到墙体色
+                        pixels[x, y] = wall_color
+
+        # 在墙面上画格子窗（每段宽度约40-50px，3段窗户）
+        win_w = (x2 - x1) // 3
+        for wi in range(3):
+            wx1 = x1 + wi * win_w + 8
+            wx2 = min(x1 + (wi + 1) * win_w - 8, x2)
+            wy1 = y1 + 20
+            wy2 = y2 - 15
+            
+            # 窗框 - 确保框架在现有像素上绘制
+            # 上框
+            for x in range(wx1, wx2):
+                if pixels[x, wy1][3] > 10:
+                    pixels[x, wy1] = frame_color
+            # 下框
+            for x in range(wx1, wx2):
+                if pixels[x, wy2-1][3] > 10:
+                    pixels[x, wy2-1] = frame_color
+            # 左框
+            for y in range(wy1, wy2):
+                if pixels[wx1, y][3] > 10:
+                    pixels[wx1, y] = frame_color
+            # 右框
+            for y in range(wy1, wy2):
+                if pixels[wx2-1, y][3] > 10:
+                    pixels[wx2-1, y] = frame_color
+            
+            # 窗内玻璃
+            for y in range(wy1 + 2, wy2 - 1):
+                for x in range(wx1 + 2, wx2 - 1):
+                    if pixels[x, y][3] > 10:
+                        orig = pixels[x, y]
+                        # 混合玻璃色
+                        blend = 0.6
+                        nr = int(glass_color[0] * blend + orig[0] * (1 - blend))
+                        ng = int(glass_color[1] * blend + orig[1] * (1 - blend))
+                        nb = int(glass_color[2] * blend + orig[2] * (1 - blend))
+                        pixels[x, y] = (nr, ng, nb, 255)
+            
+            # 窗中十字框
+            mid_x = (wx1 + wx2) // 2
+            for y in range(wy1, wy2):
+                if pixels[mid_x, y][3] > 10:
+                    pixels[mid_x, y] = frame_color
+            mid_y = (wy1 + wy2) // 2
+            for x in range(wx1, wx2):
+                if pixels[x, mid_y][3] > 10:
+                    pixels[x, mid_y] = frame_color
+
+            # 玻璃高光（左上角斜线）
+            for y in range(wy1 + 3, wy1 + 10):
+                for x in range(wx1 + 3, wx1 + 10):
+                    if x - wx1 + y - wy1 < 8:
+                        if pixels[x, y][3] > 10:
+                            pixels[x, y] = glass_light
+
+    # 左窗区域
+    draw_window_area(80, 360, 420, 510)
+    # 右窗区域 (但要避开中间的门洞)
+    draw_window_area(440, 535, 420, 510)
+    
+    return img
+
+
 def apply_tint(img, roof_hue, wall_hue, base_hue, sat_scale, lum_shift):
     pixels = img.load()
     w, h = img.size
@@ -259,7 +347,7 @@ def crop_to_content(img, margin=6):
 
 def main():
     print("="*60)
-    print("生成大本营纹理：10级×6文明 → civ/l{level}_v2.png")
+    print("生成大本营纹理：10级×6文明 → civ/l{level}_v3.png")
     print("="*60)
 
     if not os.path.exists(TEMPLATE):
@@ -289,6 +377,9 @@ def main():
 
         # 在门洞位置绘制木门（替代镂空）
         civ_img = draw_doors(civ_img)
+        
+        # 在两侧绘制窗户，遮挡飞檐透空
+        civ_img = draw_windows(civ_img)
 
         # 去水印
         civ_img, wm2 = remove_watermark(civ_img)
@@ -300,18 +391,18 @@ def main():
 
         for level in range(1, 11):
             img = civ_img.copy() if level==1 else add_level_upgrades(civ_img.copy(), level)
-            out_path = os.path.join(civ_dir, f"l{level}_v2.png")
+            out_path = os.path.join(civ_dir, f"l{level}_v3.png")
             img.save(out_path)
-            if level==1: print(f"  L{level}: {img.size} → {civ}/l{level}_v2.png")
+            if level==1: print(f"  L{level}: {img.size} → {civ}/l{level}_v3.png")
 
     # 验证
     print(f"\n{'='*60}\n验证")
     for civ in CIV_NAMES:
         civ_dir = os.path.join(BASE, civ)
         for level in [1,5,10]:
-            path = os.path.join(civ_dir, f"l{level}_v2.png")
+            path = os.path.join(civ_dir, f"l{level}_v3.png")
             if not os.path.exists(path):
-                print(f"  ✗ 缺失: {civ}/l{level}_v2.png"); continue
+                print(f"  ✗ 缺失: {civ}/l{level}_v3.png"); continue
             img = Image.open(path).convert("RGBA")
             w2,h2=img.size
             # 门洞透明
@@ -319,8 +410,8 @@ def main():
             dy1,dy2=int(h2*.62),int(h2*.72)
             opaque = sum(1 for y in range(dy1,dy2) for x in range(dx1,dx2) if img.getpixel((x,y))[3]>10)
             total = (dx2-dx1)*(dy2-dy1)
-            pct = (total-opaque)/total*100 if total>0 else 0
-            print(f"  {'✓' if pct>20 else '⚠'} {civ}/l{level}_v2.png: {w2}x{h2} 门洞透明{pct:.0f}%")
+            pct = opaque/total*100 if total>0 else 0
+            print(f"  {'✓' if pct>80 else '⚠'} {civ}/l{level}_v3.png: {w2}x{h2} 门洞不透明{pct:.0f}%")
     print("="*60)
 
 

@@ -1478,8 +1478,8 @@ func _place_town_hall():
 				if iso_renderer and iso_renderer.has_method("clear_road"):
 					iso_renderer.clear_road(nx, ny)
 	
-	# 加载大本营纹理（新路径: civ/l1_v2.png）
-	var tex_path = "res://assets/textures/buildings/%s/l1_v2.png" % civ_name
+	# 加载大本营纹理（新路径: civ/l1_v3.png）
+	var tex_path = "res://assets/textures/buildings/%s/l1_v3.png" % civ_name
 	var texture = null
 	var png_path = ProjectSettings.globalize_path(tex_path)
 	print("[TEX_LOAD] 大本营 FileAccess加载: ", tex_path)
