@@ -331,18 +331,12 @@ func _render_terrain_texture():
 			if simg == null:
 				continue
 			
-			# 所有tile统一使用标准高度，不需要偏移
-			img.blit_rect(simg, Rect2i(0, 0, TILE_W, TILE_H), Vector2i(tx, ty))
+			# 使用blend_rect(alpha混合)而非blit_rect(直接复制)
+			# blit_rect会把菱形外的透明像素覆盖到相邻tile上，造成棋盘格漏洞
+			img.blend_rect(simg, Rect2i(0, 0, TILE_W, TILE_H), Vector2i(tx, ty))
 			drawn += 1
 	
 	print("[TERRAIN] 地形渲染完成: ", drawn, " tiles → ", img_w, "x", img_h)
-	
-	# 调试：导出地形图到文件
-	var debug_path = "user://debug_iso_terrain_%d.png" % _seed_val
-	var save_result = img.save_png(debug_path)
-	print("[TERRAIN_DEBUG] 地形图已导出到: ", debug_path, " 结果=", save_result)
-	print("[TERRAIN_DEBUG] 采样(100,100)颜色: ", img.get_pixel(100,100))
-	print("[TERRAIN_DEBUG] 采样(200,200)颜色: ", img.get_pixel(200,200))
 	
 	_terrain_sprite = Sprite2D.new()
 	_terrain_sprite.name = "IsoTerrain"
