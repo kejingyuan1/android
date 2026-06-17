@@ -1478,8 +1478,8 @@ func _place_town_hall():
 				if iso_renderer and iso_renderer.has_method("clear_road"):
 					iso_renderer.clear_road(nx, ny)
 	
-	# 加载大本营纹理（使用原始 PNG 加载绕过 Godot 导入系统）
-	var tex_path = "res://assets/textures/buildings/town_hall_%s_l1_v2.png" % civ_name
+	# 加载大本营纹理（新路径: civ/l1_v2.png）
+	var tex_path = "res://assets/textures/buildings/%s/l1_v2.png" % civ_name
 	var texture = null
 	var png_path = ProjectSettings.globalize_path(tex_path)
 	print("[TEX_LOAD] 大本营 FileAccess加载: ", tex_path)
@@ -1495,31 +1495,8 @@ func _place_town_hall():
 		print("[TEX_LOAD]   PNG解码: ", load_result == OK, " 结果码=", load_result)
 		if load_result == OK:
 			print("[TEX_LOAD]   图片尺寸: ", img.get_width(), "x", img.get_height())
-			print("[TEX_LOAD]   图片格式: ", img.get_format(), " (RGBA8=", Image.FORMAT_RGBA8, " RF=", Image.FORMAT_RF, ")")
-			# 验证门洞区域Alpha（真实门洞x~+65%宽度, y~+65%高度）
-			var door_x: int = int(img.get_width() * 0.65)
-			var door_y: int = int(img.get_height() * 0.66)
-			var test_px := img.get_pixel(door_x, door_y)
-			print("[TEX_LOAD]   门洞(", door_x, ",", door_y, "): RGBA=(", test_px.r, ",", test_px.g, ",", test_px.b, ",", test_px.a, ")")
-			
-			# 【诊断】在门洞透明区域画红色标记验证alpha是否在渲染中生效
-			var marked := 0
-			for dy in range(-12, 13):
-				for dx in range(-12, 13):
-					var px: int = door_x + dx
-					var py: int = door_y + dy
-					if px >= 0 and px < img.get_width() and py >= 0 and py < img.get_height():
-						if img.get_pixel(px, py).a < 0.1:
-							img.set_pixel(px, py, Color(1, 0, 0, 0.6))
-							marked += 1
-			print("[TEX_LOAD]   门洞透明区红色诊断标记: ", marked, " 像素")
-			
 			texture = ImageTexture.create_from_image(img)
 			print("[TEX_LOAD]   ImageTexture创建: ", texture != null)
-			# 验证纹理创建后alpha是否保留
-			var tex_img: Image = texture.get_image()
-			var after_px: Color = tex_img.get_pixel(door_x, door_y)
-			print("[TEX_LOAD]   纹理创建后门洞(", door_x, ",", door_y, "): RGBA=(", after_px.r, ",", after_px.g, ",", after_px.b, ",", after_px.a, ")")
 	
 	if not texture:
 		print("[WARN] 大本营纹理不存在: ", tex_path, "，使用默认建筑纹理")
@@ -1546,11 +1523,15 @@ func _place_town_hall():
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	print("[TEX_LOAD] 大本营精灵纹理已赋值: tex=", texture != null, " 纹理尺寸=", texture.get_width() if texture else -1, "x", texture.get_height() if texture else -1)
 	
-	# 等距坐标定位（阴影暂时禁用，确认门洞透明度是否被阴影遮挡）
+	# 等距坐标定位
 	if iso_renderer and iso_renderer.has_method("grid_to_world"):
 		var iso_pos = iso_renderer.grid_to_world(th_gx, th_gy)
 		sprite.position = iso_pos
-		print("[TOWN_HALL] 阴影已禁用(调试中)")
+		# 添加阴影
+		if iso_renderer.has_method("create_shadow_sprite"):
+			var shadow = iso_renderer.create_shadow_sprite()
+			shadow.position = iso_pos
+			building_container.add_child(shadow)
 	
 	sprite.z_index = 10 + th_gy * 0.01
 	sprite.scale = Vector2(0.45, 0.45)  # 大本营比普通建筑更大更醒目
@@ -1585,7 +1566,7 @@ func upgrade_town_hall():
 	var civ_name = civ_names[civ_id]
 	
 	var new_level = current_level + 1
-	var new_tex_path = "res://assets/textures/buildings/town_hall_%s_l%d_v2.png" % [civ_name, new_level]
+	var new_tex_path = "res://assets/textures/buildings/%s/l%d_v2.png" % [civ_name, new_level]
 	
 	# 使用原始 PNG 加载绕过导入缓存
 	var new_texture = null
