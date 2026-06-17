@@ -1485,11 +1485,11 @@ func _place_town_hall():
 	print("[TEX_LOAD] 大本营 FileAccess加载: ", tex_path)
 	print("[TEX_LOAD]   全局路径: ", png_path)
 	
-	# 检查文件是否存在和修改时间
-	var dir_access = DirAccess.open(png_path.get_base_dir())
-	if dir_access:
-		var mod_time = dir_access.get_modified_time(png_path.get_file())
-		print("[TEX_LOAD]   文件修改时间戳: ", mod_time)
+	# 检查文件是否存在
+	if not FileAccess.file_exists(png_path):
+		print("[WARN] PNG文件不存在: ", png_path)
+	else:
+		print("[TEX_LOAD]   PNG文件存在")
 	
 	var file = FileAccess.open(png_path, FileAccess.READ)
 	if file:
