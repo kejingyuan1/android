@@ -62,25 +62,23 @@ def flood_fill_remove_bg(img):
 
 
 def detect_door_gap(img):
-    """检测柱子间门洞区域"""
+    """检测柱子间门洞并清除三处镂空：中间门洞 + 左右飞檐下方"""
     pixels = img.load()
     w, h = img.size
 
-    # 基于模板结构的硬编码坐标
-    # 门洞范围：x=364-436(72px), y=527-640 在原616x851模板中
-    left = int(w * 0.59)  # ~364
-    right = int(w * 0.71)  # ~436
-    top = int(h * 0.62)   # ~527
-    bottom = int(h * 0.75)  # ~638
+    # ===== 中间门洞 (基于616x851模板) =====
+    # 门洞在 x=364-436(72px), y=527-640
+    door_left = int(w * 0.59)
+    door_right = int(w * 0.71)
+    door_top = int(h * 0.62)
+    door_bottom = int(h * 0.75)
 
-    # 在目标区域内确认实际间隙边界
-    actual_left = right
-    actual_right = left
-    has_gap = False
-    for y in range(top, bottom):
+    # 在目标区域内确认间隙
+    actual_left = door_right
+    actual_right = door_left
+    for y in range(door_top, door_bottom):
         cols = [x for x in range(w) if pixels[x, y][3] > 10]
-        if len(cols) < 5:
-            continue
+        if len(cols) < 5: continue
         gaps = []
         prev = cols[0]
         for c in cols[1:]:
@@ -88,16 +86,86 @@ def detect_door_gap(img):
                 gaps.append((prev+1, c-1, c-prev))
             prev = c
         for gs, ge, gw in gaps:
-            if gw > 40 and left < gs and ge < right:
+            if gw > 40 and door_left < gs and ge < door_right:
                 actual_left = min(actual_left, gs)
                 actual_right = max(actual_right, ge)
-                has_gap = True
 
-    if has_gap and actual_left < actual_right:
-        return (actual_left + 2, actual_right - 2, top, bottom)
+    if actual_left < actual_right:
+        door_left = actual_left + 2
+        door_right = actual_right - 2
+    else:
+        door_left = door_left + 5
+        door_right = door_right - 5
 
-    # 回退硬编码
-    return (left + 5, right - 5, top, bottom)
+    # 清除门洞
+    door_cleared = 0
+    for y in range(door_top, door_bottom):
+        for x in range(door_left, door_right):
+            if pixels[x, y][3] > 10:
+                pixels[x, y] = (0, 0, 0, 0)
+                door_cleared += 1
+    print(f"  门洞: x={door_left}-{door_right} y={door_top}-{door_bottom} 清除{door_cleared}像素")
+
+    # ===== 左飞檐下方 =====
+    # 在建筑上部左侧，屋檐下方的空间
+    # 位置：门洞偏上偏左的区域，在屋顶和立柱之间
+    left_x1 = int(w * 0.12)
+    left_x2 = int(w * 0.35)
+    left_y1 = int(h * 0.38)
+    left_y2 = int(h * 0.55)
+    left_cleared = 0
+    for y in range(left_y1, left_y2):
+        for x in range(left_x1, left_x2):
+            if pixels[x, y][3] > 10:
+                # 只清除非屋顶颜色的像素（避免切掉飞檐）
+                r, g, b, a = pixels[x, y]
+                # 屋顶颜色：金色/黄色 (R>150, G>100, R/G接近)
+                is_roof = (r > 150 and g > 100 and abs(r - g) < 60)
+                # 暗色装饰/门框保留
+                is_dark_deco = (r < 60 and g < 50 and b < 50)
+                if not is_roof and not is_dark_deco:
+                    pixels[x, y] = (0, 0, 0, 0)
+                    left_cleared += 1
+    if left_cleared < 200:
+        # 稳健补清
+        for y in range(left_y1, left_y2):
+            for x in range(left_x1, left_x2):
+                if pixels[x, y][3] > 10:
+                    pixels[x, y] = (0, 0, 0, 0)
+                    left_cleared += 1
+    print(f"  左飞檐下: x={left_x1}-{left_x2} y={left_y1}-{left_y2} 清除{left_cleared}像素")
+
+    # ===== 右飞檐下方 =====
+    right_x1 = int(w * 0.62)
+    right_x2 = int(w * 0.88)
+    right_y1 = int(h * 0.38)
+    right_y2 = int(h * 0.55)
+    right_cleared = 0
+    for y in range(right_y1, right_y2):
+        for x in range(right_x1, right_x2):
+            if pixels[x, y][3] > 10:
+                r, g, b, a = pixels[x, y]
+                is_roof = (r > 150 and g > 100 and abs(r - g) < 60)
+                is_dark_deco = (r < 60 and g < 50 and b < 50)
+                # 避开门洞区域(door_left-door_right, door_top-door_bottom)的像素
+                if door_left < x < door_right and door_top < y < door_bottom:
+                    continue
+                if not is_roof and not is_dark_deco:
+                    pixels[x, y] = (0, 0, 0, 0)
+                    right_cleared += 1
+    if right_cleared < 200:
+        for y in range(right_y1, right_y2):
+            for x in range(right_x1, right_x2):
+                if pixels[x, y][3] > 10:
+                    if door_left < x < door_right and door_top < y < door_bottom:
+                        continue
+                    pixels[x, y] = (0, 0, 0, 0)
+                    right_cleared += 1
+    print(f"  右飞檐下: x={right_x1}-{right_x2} y={right_y1}-{right_y2} 清除{right_cleared}像素")
+
+    total = door_cleared + left_cleared + right_cleared
+    print(f"  三处合计: {total}像素")
+    return (door_left, door_right, door_top, door_bottom)
 
 
 def _find_gaps(cols, w, gap_min):
@@ -112,21 +180,65 @@ def _find_gaps(cols, w, gap_min):
 
 
 def make_door_transparent(img):
-    """清除门洞区域"""
-    gap = detect_door_gap(img)
-    if not gap:
-        print("  [门洞] 未检测到有效间隙")
-        return img, 0
-    left, right, top, bottom = gap
+    """
+    清除三处镂空：
+    1. 左飞檐下方 → 屋檐翘角与建筑主体之间的狭长三角区
+    2. 中间门洞 → 两柱之间的开敞空间
+    3. 右飞檐下方 → 屋檐翘角与建筑主体之间的狭长三角区
+    """
     pixels = img.load()
     w, h = img.size
-    removed = 0
-    for y in range(max(0, top-2), min(h, bottom+2)):
-        for x in range(max(0, left), min(w, right)):
+    total_before = sum(1 for y in range(h) for x in range(w) if pixels[x, y][3] > 10)
+
+    # ===== 门洞 (x=59%-71%宽, y=62%-75%高) =====
+    door_left = int(w * 0.59)
+    door_right = int(w * 0.71)
+    door_top = int(h * 0.62)
+    door_bottom = int(h * 0.75)
+
+    # 在目标区域内确认实际间隙边界
+    actual_left = door_right
+    actual_right = door_left
+    for y in range(door_top, door_bottom):
+        cols = [x for x in range(w) if pixels[x, y][3] > 10]
+        if len(cols) < 5: continue
+        for prev, curr, _gw in [(cols[i], cols[i+1], cols[i+1]-cols[i]) for i in range(len(cols)-1) if cols[i+1]-cols[i] > 15]:
+            if curr - prev > 40 and door_left < prev and curr < door_right:
+                actual_left = min(actual_left, prev+2)
+                actual_right = max(actual_right, curr-2)
+
+    dl = actual_left if actual_left < actual_right else (door_left + 5)
+    dr = actual_right if actual_left < actual_right else (door_right - 5)
+    door_cleared = 0
+    for y in range(door_top, door_bottom):
+        for x in range(dl, dr):
             if pixels[x, y][3] > 10:
                 pixels[x, y] = (0, 0, 0, 0)
-                removed += 1
-    print(f"  [门洞] x={left}-{right} y={top-2}-{bottom+2} 清除{removed}像素")
+                door_cleared += 1
+    print(f"  ①门洞: x={dl}-{dr} y={door_top}-{door_bottom} ({door_cleared}px)")
+
+    # ===== 左右飞檐下 (精准小三角区域) =====
+    # 左飞檐：建筑左侧 x=10%-20%宽, y=42%-52%高
+    # 右飞檐：建筑右侧 x=80%-90%宽, y=42%-52%高
+    for side, (x_s, x_e) in [("左", (int(w*0.10), int(w*0.22))), ("右", (int(w*0.78), int(w*0.90)))]:
+        y_s = int(h * 0.42)
+        y_e = int(h * 0.52)
+        cleared = 0
+        for y in range(y_s, y_e):
+            for x in range(x_s, x_e):
+                if pixels[x, y][3] > 10:
+                    r, g, b, a = pixels[x, y]
+                    # 颜色比值检测：黄金屋顶保留，其他移除
+                    is_gold_roof = (r > g * 0.85 and g > b * 0.65)  # 金色特征
+                    is_dark_detailing = (r + g + b < 120)  # 深色细节（柱子/阴影）
+                    if not is_gold_roof and not is_dark_detailing:
+                        pixels[x, y] = (0, 0, 0, 0)
+                        cleared += 1
+        print(f"  {'③' if side=='右' else '②'}{side}飞檐: x={x_s}-{x_e} y={y_s}-{y_e} ({cleared}px)")
+
+    total_after = sum(1 for y in range(h) for x in range(w) if pixels[x, y][3] > 10)
+    removed = total_before - total_after
+    print(f"  三处合计: {removed}px")
     return img, removed
 
 
